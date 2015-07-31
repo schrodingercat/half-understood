@@ -10,7 +10,7 @@ Comprehending Monads
 #####Abstract
 >Category theorists invented monads in the 1960's to concisely express certain aspects of universal algebra. Functional programmers invented list comprehensions in the 1970's to concisely express certain programs involving lists. This paper shows how list comprehensions may be generalised to an arbitrary monad, and how the resulting programming feature can concisely express in a pure functional language some programs that manipulate state, handle exceptions, parse text, or invoke continuations. A new solution to the old problem of destructive array update is also presented. No knowledge of category theory is assumed.
 
->20世纪60年代，Monads出现在范畴理论中，它简洁的表达了泛代数(universal algebra)中的某个概念。20世纪70年代，函数式编程者发展出递推式构造列表(list comprehesions)，用lists来简洁的表达某些程序。本文将展示可以推广递推式构造列表为任何monad的可能，以及怎样组织纯函数式语言去简洁的表达操作状态，处理异常，解析文本，或调用延续等操作。同时，对破坏性数组更新这个老问题提出新的解决放案。本文不涉及任何范畴理论。
+>20世纪60年代，Monads出现在范畴理论中，它简洁的表达了泛代数(universal algebra)中的某个概念。20世纪70年代，函数式编程者发展出递推式构造列表(list comprehesions)，它简洁的表达某些构造列表的程序。本文将展示如何可推广递推式构造列表为任意monad，以及怎样组织纯函数式语言去简洁的表达操作状态，处理异常，解析文本，或调用延续等操作。同时，对破坏性数组更新这个老问题提出新的解决放案。本文不涉及任何范畴理论。
 
 ##1. Introduction
 Is there a way to combine the indulgences of impurity with the blessings of purity?
