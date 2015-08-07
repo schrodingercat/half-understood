@@ -330,6 +330,47 @@ We can recover `unit` , `map` , and `join` from the comprehension notation:
 (3') join  x'' = [x | x'<-x'', x<-x']
 ```
 
+Here we adopt the convention that if `x` has type `x` , then `x'` has type `M x` and `x''` has type `M (M x)`.
+
+>在这儿我们按惯例，如果x的类型是x，那么x'的类型是M x,x''的类型是M (M x)。
+
+Thus not only can we derive comprehensions from monads, but we can also derive monads from comprehensions. Define a comprehension structure to be any interpretation of the syntax of comprehensions that satisfies laws (5)-(6) and (I)-(III). Any monad gives rise to a comprehension structure, via laws (1)-(3) as we have seen, these imply (4)-(6) and (I)-(III). Conversely, any comprehension structure gives rise to a monad structure, via laws (1)-(3) it is easy to verify that these imply (i)-(iv) and (1)-(4), and hence (I)-(III).
+
+>如此我们不只是能从单子进行推导，而且我们能从推导得出单子。定义一个推导结构，使其能作为任何符合规则(5)-(6)以及规则(I)-(III)的推导语法的解释。任何单子都可以产生一个推导结构，通过规则(1)-(3)我们可以看出，规则(4)-(6)和规则(I)-(III)是被暗含的。反过来，任何推导结构可以产生一个单子结构,通过规则(1)-(3)我们可以很容易验证，规则(i)-(iv)和规则(1)-(4)是被暗含的，并因此符合规则(I)-(III)。
+
+The concept we arrived at by generalising list comprehensions, mathematicians arrived at by a rather different route. It first arose in homological algebra in the 1950's with the undistinguished name "standard construction" (sort of a mathematical equivalent of "hey you"). The next name, "triple", was not much of an improvement. Finally it was baptised a "monad". Nowadays it can be found in any standard text on category theory [Mac71, BW85, LS86].
+
+>我们靠泛化列表推导式所得到的概念，数学家们靠相当不一样的方式获得。它第一次以一个非常普通的名字“标准构造(standard construction)”(差不多有点“嘿，你”的样子)出现在20世纪50年代的同调代数(homological algebra)中。它的另一个名字，“三元组(triple)”，并没有得到广泛使用。最后，它被命名为“单子(monad)”。现今，这个名字被发现用于各种标准的范畴理论[Mac71, BW85, LS86]文献中。
+
+The concept we call a monad is slightly stronger than what a categorist means by that name: we are using what a categorist would call a strong monad in a cartesian closed category. Rougly speaking, a category is cartesian closed if it has enough structure to interpret lambda-calculus. In particular, associated with any pair of objects (types) `x` and `y` there is an object `[x -> y]` representing the space of all arrows (functions) from `x` to `y` . Recall that `M` is a functor if for any arrow `f :: x -> y` there is an arrow `map f :: M x -> M y` satisfying (i) and (ii). This functor is strong if it is itself represented by a single arrow `map :: [x -> y] -> [M x -> M y]`. This is all second nature to a generous functional programmer, but a stingy categorist provides such structure only when it is needed.
+
+>我们这儿的单子的概念比范畴学家理解的稍微牛叉一些：我们采用的是实际上被范畴学家称为笛卡尔闭范畴上的强单子(a strong in a cartesian closed category)。Rougly说过，一个范畴如果它有足够去解释lambda演算的构造，那么它就是笛卡尔封闭的(cartesian closed)。特别的，为了关联任何一对对象`x`和`y`，有另一个对象`[x -> y]`从概念上描述所有`x`到`y`的之间的箭头(函数)。重申一下，如果对于任何箭头`f :: x->y`，都有一个箭头`map f :: M x -> M y`满足规则(i)和(ii)，那么`M`是一个函子(functor)。如果一个单箭头`map :: [x->y] -> [M x->M y]`能代表这个函子本身，那么这个函子是“强”的。这都是慷慨的函数式程序员的本能,而不是小气的范畴学家只有在必要时候所提供的结构。
+
+It is needed here, as evidenced by Moggi's requirement that a computational monad have a strength, a function t :: (x,M y) -> M (x,y) satisfying certain laws [Mog89a]. In a cartesian closed category, a monad with a strength is equivalent to a monad with a strong functor as described above. In our framework, the strength is defined by t(x,y') = [(x,y) | y<-y']. (Following Haskell, we write (x,y) for pairs and also (x,y) for the corresponding product type.)
+
+>根据Moggi的要求，一个可计算的单子有一个强度，需要一个满足某种规则[Mog89a]的函数`t :: (x,M y)->M (x,y)`。在笛卡尔封闭范畴中，根据上面说的，具有强度的单子等价于具有强函子的单子。在我们的框架中，强度被定义为`t(x,y') = [(x,y) | y<-y']`。（在Haskell中，我们采用(x,y) 表示pairs，同时也表示关联类型）。
+
+Monads were conceived in the 1950's, list comprehensions in the 1970's. They have quite independent origins, but fit with each other remarkably well. As often happens, a common truth may underlie apparently disparate phenomena, and it may take a decade or more before this underlying commonality is unearthed.
+
+>单子诞生于20世纪90年代，列表推导式诞生于20世纪70年代。他们都是比较独立的发展出来的，但他们彼此都能很好的相容。一个通用的本质会在两个毫不相干的表面现象之下，而发掘它又需要10年甚至是更多的时间。
+
+
+##3 Two trivial monads
+
+>3 两个普通的单子
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
