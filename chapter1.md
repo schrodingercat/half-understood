@@ -282,26 +282,30 @@ unit :: x->M x
 join :: M(M x) -> Mx
 ```
 
->>(i)           map id = id,
->>(ii)     map (g * f) = (map g) * (map f)
->>(iii) (map f) * unit = unit * f
->>(iv)  (map f) * join = join * (map (map f))
+```haskell
+(i)           map id = id,
+(ii)     map (g * f) = (map g) * (map f)
+(iii) (map f) * unit = unit * f
+(iv)  (map f) * join = join * (map (map f))
 
->>(I)         join * unit = id
->>(II)  join * (map unit) = id
->>(III)         join*join = join * (map join)
+(I)         join * unit = id
+(II)  join * (map unit) = id
+(III)         join*join = join * (map join)
+```
 
 Every monad gives rise to a notion of comprehension via laws (1)-(3). The three laws establish a correspondence between the three components of a monad and the three forms of qualifier: (1) associates `unit` with the empty qualifier, (2) associates `map` with generators, and (3) associates `join` with qualifier composition. The resulting notion of comprehension is guaranteed to be sensible in that it necessarily satisfies laws (4)-(6) and (I)-(III).
 
 >每一个单子都通过规则(1)-(3)产生推导的概念。这三条规则建立起单子三个部件与三种限定词的之间的联系：(1)联系`unit`和空限定词，（2）联系`map`和生成器，（3）联系`join`和符合限定词。结果是，推导的意图显然被明智的限制于必须满足规则(4)-(6)和(I)-(III)。
 
->>(1) [t|A] = unit t
->>(2) [t|x<-u] = map(\x -> t) u
->>(3) [t|(p,q)] = join [[t|q]|p]
+```haskell
+(1) [t|A] = unit t
+(2) [t|x<-u] = map(\x -> t) u
+(3) [t|(p,q)] = join [[t|q]|p]
 
->>(4) [f t| q]           =(map f)[t|q]
->>(5) [x| x<-u]          = u
->>(6) [t|p, x<-[u|q], r] = [t_x_u|p, q, r_x_u].
+(4) [f t| q]           =(map f)[t|q]
+(5) [x| x<-u]          = u
+(6) [t|p, x<-[u|q], r] = [t_x_u|p, q, r_x_u].
+```
 
 In what follows, we will need to distinguish many monads. We write `M` alone to stand for the monad, leaving the triple `(map_M,unit_M,join_M )` implicit, and we write `[t | q]_M` to indicate in which monad a comprehension is to be interpreted. The monad of lists as described above will be written List .
 
@@ -348,7 +352,7 @@ The concept we call a monad is slightly stronger than what a categorist means by
 
 It is needed here, as evidenced by Moggi's requirement that a computational monad have a strength, a function t :: (x,M y) -> M (x,y) satisfying certain laws [Mog89a]. In a cartesian closed category, a monad with a strength is equivalent to a monad with a strong functor as described above. In our framework, the strength is defined by t(x,y') = [(x,y) | y<-y']. (Following Haskell, we write (x,y) for pairs and also (x,y) for the corresponding product type.)
 
->根据Moggi的要求，一个可计算的单子有一个强度，需要一个满足某种规则[Mog89a]的函数`t :: (x,M y)->M (x,y)`。在笛卡尔封闭范畴中，根据上面说的，具有强度的单子等价于具有强函子的单子。在我们的框架中，强度被定义为`t(x,y') = [(x,y) | y<-y']`。（在Haskell中，我们采用(x,y) 表示pairs，同时也表示关联类型）。
+>根据Moggi的要求，一个可计算的单子有一个强度，我们需要一个满足某种规则[Mog89a]的函数`t :: (x,M y)->M (x,y)`。在笛卡尔封闭范畴中，根据上面说的，具有强度的单子等价于具有强函子的单子。在我们的框架中，强度被定义为`t(x,y') = [(x,y) | y<-y']`。（在Haskell中，我们采用(x,y) 表示pairs，同时也表示关联类型）。
 
 Monads were conceived in the 1950's, list comprehensions in the 1970's. They have quite independent origins, but fit with each other remarkably well. As often happens, a common truth may underlie apparently disparate phenomena, and it may take a decade or more before this underlying commonality is unearthed.
 
@@ -357,18 +361,63 @@ Monads were conceived in the 1950's, list comprehensions in the 1970's. They hav
 
 ##3 Two trivial monads
 
->3 两个普通的单子
+>3 两个平凡的单子
 
+###3.1 The identity monad
 
+>3.1 恒等单子(identity monad)
 
+The identity monad is the trivial monad specified by
 
+>恒等单子是一个平凡单子，它的定义是：
 
+```haskell
+type_Id  x = x
+map_Id f x = f x
+unit_Id  x = x
+join_Id  x = x
+```
 
+so `map_Id` , `unit_Id` , and `bind_id` are all just the identity function. A comprehension in the identity monad is like a "let" term:
 
+>因此`map_Id`,`unit_Id`以及`bind_id`都是恒等函数。恒等单子的推导式就像“let”语句一样：
 
+```haskell
+  [t | x <- u]_Id
+= ((\x->t)u)
+= (let x=u in t)
+```
+Similarly, a sequence of qualifiers corresponds to a sequence of nested "let" terms:
 
+>类似的，顺序发生的限定词对于顺序嵌套的“let”语句：
 
+```haskell
+[t|x<-u,y<-v]_Id = (let x = u in (let y = v in t))
+```
 
+Since `y` is bound after `x` it appears in the inner "let" term. In the following, comprehensions in the identity monad will be written in preference to "let" terms, as the two are equivalent.
+
+>既然`y`在`x`后被绑定，它出现在内部的“let”语句中。又因为两者是等价的，在下文中，恒等单子的推导式会优先于“let”语句写出。
+
+In the Hindley-Milner type system, lambda-terms and "let" terms differ in that the latter may introduce polymorphism. The key factor allowing "let" terms to play this role is that the syntax pairs each bound variable with its binding term. Since monad comprehensions have a similar property, it seems reasonable that they, too, could be used to introduce polymorphism. However, the following does not require comprehensions that introduce polymorphism, so we leave exploration of this issue for the future.
+
+>在Hindley-Milner类型系统中，lambda语句和“let”语句的不同在于后者会引入多态。关键点是允许“let”语句扮演一个这样的角色，这个语法将被绑定的变量和绑定的语句凑成一对。既然单子推导式有相似的属性，那么它能够被用来引入多态看起来也是合理的。然而，下文中并不要求推导式引入多态特性，因此我们将这个问题留给未来解决。
+
+###3.2 The strictness monad
+
+>3.2 严格单子(strictness monad)
+
+Sometimes it is necessary to control order of evaluation in a lazy functional program. This is usually achieved with the computable function strict , defined by:
+
+>有时候有必要在惰性函数式程序中去控制计算的顺序。通常需要采用严格计算的函数来实现，被定义成：
+
+```haskell
+strict f x = if x!= 丄 then f x else 丄
+```
+
+Operationally, strict f x is reduced by first reducing x to weak head normal form (WHNF) and then reducing the application f x . Alternatively, it is safe to reduce x and f x in parallel, but not allow access to the result until x is in WHNF.
+
+>
 
 
 
