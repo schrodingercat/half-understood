@@ -415,11 +415,116 @@ Sometimes it is necessary to control order of evaluation in a lazy functional pr
 strict f x = if x!= 丄 then f x else 丄
 ```
 
-Operationally, strict f x is reduced by first reducing x to weak head normal form (WHNF) and then reducing the application f x . Alternatively, it is safe to reduce x and f x in parallel, but not allow access to the result until x is in WHNF.
+Operationally, `strict f x` is reduced by first reducing `x` to weak head normal form (WHNF) and then reducing the application `f x` . Alternatively, it is safe to reduce `x` and `f x` in parallel, but not allow access to the result until `x` is in WHNF.
 
->
+>从操作上，`strict f x`是按照首先计算x到“弱头正则形式(weak head normal form (WHNF))”然后计算应用`f x`的计算过程。或者是同时计算`x`和`f x`，直到`x`已经是WHNF才会给出`f x`的结果。
 
+We can use this function as the basis of a monad:
 
+>我们能采用这些行书作为基本的单子：
+
+```haskell
+type_Str  x = x
+map_Str f x = strict f x
+unit_Str  x = x
+join_Str  x = x
+```
+
+This is the same as the identity monad, except for the definition of map_Str . Monad laws (i), (iii)-(iv), and (I)-(III) are satisfied, but law (ii) becomes an inequality,
+
+>除了对map_Str的精确定义，其他都和恒等单子一样。单子满足规则(i),(iii)-(iv)和(I)-(III)，但是规则(ii)有点不一样，
+
+```haskell
+(map_Str g) * (map_Str f) <= map_Str (g*f)
+```
+
+So Str is not quite a monad; categorists might call it a lax monad. Comprehensions for lax monads are defined by laws (1)-(3), just as for monads. Law (5) remains valid, but laws (4 ) and (6 ) become inequalities.
+
+>因此Str不完全是一个单子；范畴学家可能会叫它宽松单子(a lax monad)。像单子一样，宽松单子的推导式由规则(1)-(3)定义。规则(5)仍然有用，只是规则(4)和(6)有些不一样。
+
+We will use Str-comprehensions to control the evaluation order of lazy programs. For instance, the operational interpretation of
+
+>我们将使用Str推导式控制惰性程序的计算顺序。例如，对下面这个推导式
+
+```haskell
+[t| x<-u,y<-v]_Str
+```
+
+is as follows: reduce `u` to WHNF, bind `x` to the value of `u` , reduce `v` to WHNF, bind `y` to value of `v` , then reduce `t` . Alternatively, it is safe to reduce `t` , `u` , and `v` in parallel, but not to allow access to the result until both `u` and `v` are in WHNF.
+
+>操作起来像这样：计算`u`到WHNF，绑定`x`到`u`的值,计算`v`到WHNF，绑定`y`到`v`的值，然后计算`t`。或者是，安全的并行计算`t`，`u`，`v`，并且直到`u`和`v`为WHNF的时候返回整个结果。
+
+##4 Manipulating state
+
+>4 状态处理
+
+Procedural programming languages operate by assigning to a state; this is also possible in impure functional languages such as Standard ML. In pure functional languages, assignment may be simulated by passing around a value representing the current state. This section shows how the monad of state transformers and the corresponding comprehension can be used to structure programs written in this style.
+
+>过程式编程语言靠状态赋值来运转。这在不纯的函数式语言例如Standard ML也可以实现。在纯的函数式语言中，赋值有可能靠传递一个代表当前状态的值给函数来模拟。本节说明怎样用状态转换器单子和对应的推导式来构造此类程序。
+
+### 4.1 State transformers
+
+>状态转换器
+
+Fix a type `S` of states. The monad of state transformers `ST` is defined by
+
+>确定状态的类型是`S`。状态转换器单子`ST`定义为：
+
+```haskell
+type ST  x   = S->(x,S)
+map_ST f x'  = \s->[(f x,s')|(x,s')<-x's]_Id
+unit_ST  x   = \s->(x,s)
+join_ST  x'' = \s->[(x,s'')|(x',s')<-x''s,(x,s'')<-x's']_Id
+```
+
+(Recall the equivalence of Id-comprehensions and "let" terms as explained in Section 3.1.) A state transformer of type `x` takes a state and returns a value of type `x` and a new state. The unit takes the value `x` into the state transformer `\s -> (x,s)` that returns `x` and leaves the state unchanged. We have that
+
+>(回忆3.1节关于恒等推导式和“let”语句等价的说明)一个类型`x`的状态转换器，接受一个状态并且返回一个类型`x`的值和一个新状态。`unit`函数接受一个值`x`放到状态转换器`\s->(x,s)`中，这个转换器返回`x`和保持输入状态不变。我们有：
+
+```haskell
+[(x,y)|x<-x',y<-y']_ST = \s->[((x,y),s'')|(x,s')<-x's,(y,s'')<-y's']_Id
+```
+
+This applies the state transformer `x'` to the state `s` , yielding the value `x` and the new state `s'` it then applies a second transformer `y'` to the state `s'` yielding the value `y` and the newer state `s"`; finally, it returns a value consisting of `x` paired with `y` and the final state `s"`.
+
+>这个推导式应用状态转换器`x'`到状态`s`上，然后生成`x`和新的状态`s‘`,然后应用第二个转换器`y'`到状态`s'`生成`y`和新的状态`s"`；最后，返回`x`和`y`的对和s"。
+
+Two useful operations in this monad are:
+
+>状态转换单子有两个有用的操作：
+
+```haskell
+fetch     :: ST S
+fetch     =  \s->(s,s)
+assign    :: S -> ST()
+assign s' =  \s -> ((),s')
+```
+
+The first of these fetches the current value of the state, leaving the state unchanged; the second discards the old state, assigning the new state to be the given value. Here () is the type that contains only the value ().
+
+>第一个用来获取状态的当前值,返回的状态不变；第二个丢弃久的状态，并赋与一个新的状态为返回值。在这儿()是一个类型，这个类型中只有一个值().
+
+A third useful operation is:
+
+>第三个有用的操作是：
+
+```haskell
+init      :: S->ST x->x
+init s x' =  [x | (x,s')<-x's]_Id
+```
+
+This applies the state transformer `x'` to a given initial state `s`; it returns the value computed
+by the state transformer while discarding the final state.
+
+>这个操作应用状态转换器`x'`到给定的初始状态`s`；当丢弃掉最后的状态时它返回根据状态转换器计算的x的值。
+
+###4.2 Example: Renaming
+
+>4.2 例子： 重命名
+
+Say we wish to rename all bound variables in a lambda term. A suitable data type Term for representing lambda terms is defined in Figure 1 (in Standard ML) and Figure 2 (in Haskell). New names are to be generated by counting; we assume there is a function
+
+>我们希望重命名在一个lambda语句中所有绑定的变量。为表现lambda语句，一个适合的数据类型术语作为定义在Figure 1(在Standard ML中)和Figure 2(在Haskell中)
 
 
 
