@@ -285,7 +285,11 @@ Now `applyST f` is equal to `f1`.
 
 >现在`applyST f`就与`f1`相等了。
 
-
+```haskell
+译者猜想：
+\x -> (x >>= (return f)) <=> map f
+ \x' -> (x' >>= (\x->x)) <=> join
+```
 
 
 
