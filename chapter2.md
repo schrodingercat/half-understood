@@ -287,17 +287,176 @@ Now `applyST f` is equal to `f1`.
 
 ```haskell
 译者猜想：
-\x -> (x >>= (return f)) <=> map f
- \x' -> (x' >>= (\x->x)) <=> join
+return = unit
+\x' -> (x' >>= (return*f)) = map f
+ \x'' -> (x'' >>= (\x'->x')) = join
+
+{ f x | x <- x' } = map f x' = x' >>= return f
+{ f y x | x <- x',y <- y'} = join (map (\x -> (map(f x) y')) x') = x'>>= (\x-> y'>>= return*f x)
+
+因此
+
+\f -> (\x'->(x' >>= return*f)) <=> map
 ```
 
+###Which is the Monad?
 
+>何为单子？
 
+Technically each Monad (in Haskell) is not a type, but a "type contructor". In our state transformer example, we have actually declared an infinite set of monads. For each type `s`, there is a type constructor StateTrans s. Each such type constructor has been declared to be a Monad by the instance declaration above.
 
+>从技术上讲，每一个单子（在Haskell中）都不是类型，而是一个“类型构造器”。在我们状态转换器的例子中，我们确实声明了一个单子的无限集合。对于每一个类型`s`，有一个类型构造器`StateTrans s`。每一个这样的类型构造器都已经被声明成一个可以通过像上面那样的实例声明的单子。
 
+###An example
 
+>一个例子
 
+A short example shows how the StateTrans monad lets you code in a fairly imperative style.
 
+>一个简短的例子展示StateTrans单子怎样让你的代码变为清晰的命令式风格。
+
+We will implement a variation on Euclid's algorithm for finding the greatest common divisor of two positive integers.
+
+>我们将实现一个寻找两个正整数的最大公约数的欧几里德算法的变种。
+
+```haskell
+     while x != y do
+          if x < y
+          then y := y-x
+          else x := x-y
+     return x
+```
+
+First we must define a type to represent the state:
+
+>一开始，我们必须定义一个类型来表示状态：
+
+```haskell
+type ImpState = (Int, Int)
+```
+
+Next we define some simple state transformers to access and change the state. We use the type () and its sole value, (), when a state transformer does not return a useful value.
+
+>然后，我们定义一些简单的状态转换器来访问和修改状态。当一个状态转换器需要返回一个无意义的值时，我们使用类型`()`和它的唯一的值`()`。
+
+```haskell
+getX, getY :: StateTrans ImpState Int
+getX = ST(\(x,y)-> ((x,y), x))
+getY = ST(\(x,y)-> ((x,y), y))
+
+putX, putY :: Int -> StateTrans ImpState ()
+putX x' = ST(\(x,y)->((x',y),()))
+putY y' = ST(\(x,y)->((x,y'),()))
+```
+
+Now we can write the algorithm with the state squarely in the background:
+
+>现在我们可以写一个算法,并将状态直接隐藏起来：
+
+```haskell
+gcdST :: StateTrans ImpState Int
+gcdST = do x <- getX
+           y <- getY
+           (if x == y
+            then
+                 return x
+            else if x < y
+            then 
+                 do putY (y-x)
+                    gcdST
+            else
+                 do putX (x-y)
+                    gcdST)
+```
+
+And finally a function to construct an initial state, run the program and discard the final state
+
+>而最后，用一个函数来构造初始状态，并运行程序和丢弃最终状态。
+
+```haskell
+greatestCommonDivisor x y = snd( applyST gcdST (x,y) )
+```
+
+This small example only hints at the utility of monads. It would be much shorter to write the algorithm in a conventional functional style. The savings from not having to explicitly pass the state around become larger as the program becomes larger.
+
+>这个小例子只是展示了单子的一些用途。它写的算法比传统函数式编程风格短得多。省下来的是随着程序增大而增加的到处显示的传递状态的代码。
+
+###Monads, Monoids, and Identities
+
+>单子，幺半群，恒等式
+
+The term "monad" comes from category theory, which is a branch of algebra (or, depending on whom you talk to, algebra is a branch of category theory). There is no need to understand the algebra at all to understand the use of monads in functional programming. This section and the next, just touch on the algebra a little bit.
+
+>术语“单子”来自范畴论，范畴论是一个代数的分支（或者，根据不同人的解释，可能得到的答案是代数是范畴论的分支）。对于理解单子在函数式编程的应用，你不需要懂任何代数的知识。从本节开始，只会稍微接触一点儿代数知识。
+
+Monads share some similarity with monoids , with `>>=` being similar to the monoid operation and the `return` operator taking the place of the identity member. Specifically we have the following identities
+
+>单子与幺半群类似，操作`>>=`类似积操作并且操作`return`代替一元。尤其是我们有下面的恒等式：
+
+```haskell
+return a >>= k   =   k a
+  p >>= return   =   p
+(p >>= j) >= k   =   p >>= (\x->(j x >>= k))      [provided x is not free in j or k]
+```
+
+```haskell
+译者猜想：
+  j1*j2 = (\a -> j1 a>>=j2)
+  (j1*j2)*j3 = (\b -> (\a -> j1 a >>= j2) b >>= j3)
+  j1*(j2*j3) = (\a -> j1 a >>= (\b -> j2 b >>= j3))
+  return * j = j * return = j
+
+```
+
+These identities hold in the StateTrans monad and ought to hold for any monad we define.
+
+>StateTrans单子满足这些恒等式，并且我们定义的任何单子都要满足。
+
+###Zeros and addition
+
+>零和加法
+
+Monoids sometimes also have a zero member and an addition operator.
+
+>幺半群有时候也有零元和加法操作。
+
+In Haskell, the zero member of a monad is called mzero and the relevant identity is
+
+>在Haskell中，单子的零元被称为`mzero`，并且有关的恒等式是：
+
+```haskell
+mzero >>= k   =  mzero
+```
+
+```haskell
+译者注：
+   为什么我觉得应该是:
+      \x -> mzero x >>= k = \x -> mzero x
+   即：
+      mzero*k=mzero
+      k*mzero=mzero
+```
+
+In a state transformation monad, mzero might represent an exception. I.e. an indication that the task can not be completed.
+
+>在状态转换单子中，`mzero`可能代表一个异常。即一个操作无法被完成的征兆。
+
+When a Monad has a zero member, it often also has an addition operation, mplus, obeying the following additional identities
+
+>当单子具有零元的时候，它常常具有加法操作，`mplus`，服从下面的加法恒等式：
+
+```haskell
+p `mplus` mzero = p = mzero `mplus` p
+p `mplus` (q `mplus` r)  =  (p `mplus` q) `mplus` r
+```
+
+It turns out that monads with zeros and addition are common enough that there is a library class, called MonadPlus, defined to encompass them.
+
+>结果是拥有零元和加法的单子足够普遍，以至于有一个类库，称之为`MonadPlus`，在其中定义了这些。
+
+If `mzero` represents failure to complete a computation, `mplus` might represent a way of combining alternative computations such that, if one fails, the other can succeed instead.
+
+>如果mzero表示计算失败，`mplus`可能表示二选一的组合计算，如果一个失败，那么另一个可以成功取代它。
 
 
 
