@@ -734,7 +734,7 @@ In Haskell the main program should be of type IO().
 
 It is often said that pure functional languages can't be used to write interactive programs. At first glance the IO monad seems to contradict this idea.  You can think of it this way: When your functional program is executed, it does not interact with the operating system, it merely computes an object of type IO(), which describes a set of possible interactive computations. An interpreter interacts with the environment to make one of these computations happen. The fact that Haskell is a lazy language is key to this, for the set of computations for many applications is infinite, even if each computation is finite. The choice of which computation is needed is governed by the input; thanks to lazyness, only the computation that is actually required is computed.
 
->通常说纯函数式编程语言通常不能写出交互式程序。第一感觉是IO单子看起来与这个观点向矛盾。你可以用这样的方式考虑这个问题：当你的函数式程序被执行，它不能与操作系统交互，它仅仅处理一个类型为IO()的对象，这个对象描述一套合适的交互式处理。一个解释器影响环境使得这些处理中的某个行为发生。事实上，Haskell是一个惰性语言，关键就在这儿，因为这套为很多应用采取的处理方式是无限的，甚至如果每个计算都是无限的。
+>通常说纯函数式编程语言通常不能写出交互式程序。第一感觉是IO单子看起来与这个观点向矛盾。你可以用这样的方式考虑这个问题：当你的函数式程序被执行，它不能与操作系统交互，它仅仅处理一个类型为IO()的对象，这个对象描述一组可能的交互式运算。一个解释器与环境交互，使得这些运算中的某个运算发生。事实上，Haskell是一个惰性语言，关键就在这儿，因为即使每个计算都是有限的，这套为很多应用采取的计算方式是无限的。选择何种计算方式是必需的，由输入所决定；多亏了惰性，只有计算实际所需的计算。
 
 
 
