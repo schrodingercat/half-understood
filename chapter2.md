@@ -25,6 +25,8 @@ The reader is assumed to have a familiarity with the basics of Haskell programmi
 
 >这篇文章假定读者熟悉一些基本的Haskell编程知识，比如数据声明，函数声明，以及lambda表达式。熟悉类和实例声明会更好。
 
+>quote: http://www.engr.mun.ca/~theo/Misc/haskell_and_monads.htm
+
 ###Simulating states without Monads
 
 >模拟状态，不使用单子
@@ -431,10 +433,14 @@ mzero >>= k   =  mzero
 ```haskell
 译者注：
    为什么我觉得应该是:
-      \x -> mzero x >>= k = \x -> mzero x
+      \x -> (mfzero x >>= k) = \x -> mfzero x
    即：
-      mzero*k=mzero
-      k*mzero=mzero
+      mfzero*k=mfzero
+      k*mfzero=mfzero
+   以及在haskell中有定义：
+      mzero :: m a
+      mzero >>= f  =  mzero
+      v >> mzero   =  mzero
 ```
 
 In a state transformation monad, mzero might represent an exception. I.e. an indication that the task can not be completed.
@@ -458,10 +464,277 @@ If `mzero` represents failure to complete a computation, `mplus` might represent
 
 >如果mzero表示计算失败，`mplus`可能表示二选一的组合计算，如果一个失败，那么另一个可以成功取代它。
 
+###Exceptions, exception handling, and backtracking.
+
+>异常，异常处理，回溯
+
+We generalize the `StateTrans` monad, to include a zero element and an addition operation.  To do this we must change the type to include the possibility of failure:
+
+>我们一般化`StateTrans`单子，使之包含零元和加法操作。因此，我们必须修改类型，使之包含失败的可能。
+
+```haskell
+newtype StateTransEx s a = STE( s -> Maybe (s, a) )
+```
+
+(The Maybe type constructor is defined in the Haskell Prelude as
+
+>(`Maybe`类型构造器被定义成Haskell的预加载类型，像这样：
+
+```haskell
+data Maybe t = Just t
+             | Nothing
+```
+
+"Maybe" is itself a Monad, but I won't be using that fact here.)
+
+>“Maybe”自己就是一个单子，但是目前我们不需要使用这个特性。)
+
+We use `Nothing` to represent failure, i.e., an exception, and `Just (s,a)` to represent success with result `a` and new state `s`.
+
+>我们使用`Nothing`表示失败，也就是一个异常，而`Just (s,a)`代表成功并包裹一个结果`a`和一个新状态`s`。
+
+We must define `>>=` and `return` so that it is a monad. We define `>>=` so that it propagates exceptions. That is, if `p` throws an exception, then so does `p >>= f` .
+
+>由于`StateTransEx`是单子，所以我们必须要定义`>>=`和`return`。我们定义`>>=`可以传递异常。那就是，如果p抛出一个异常，那么这样做`p>>=f`。
+
+```haskell
+instance Monad (StateTransEx s)
+  where
+    -- (>>=) :: StateTransEx s a -> (a -> StateTransEx s b) -> StateTransEx s b
+    (STE p) >>= k = STE( \s0 -> case p s0 of
+                                 Just (s1, a) -> let (STE q) = k a
+                                                 in q s1
+                                 Nothing -> Nothing)
+                
+    -- return :: a -> StateTransEx s a
+    return a = STE( \s -> Just (s, a) )
+```
+
+We define `mzero` and `mplus` to make `StateTransEx s a` member of class `MonadPlus`. `mzero` will mean throw an exception. ``mplus`` will give a means to recover from an exception; `mplus p q` will mean, execute `p`, but if an exception is thrown in `p`, then recover by executing `q` instead.
+
+>我们定义了`mzero`和`mplus`来使`StateTransEx s a`成为类`MonadPlus`的成员。`mzero`将表示抛出一个异常。``` `mplus` ```将表示从异常恢复。`mplus p q`将表示，执行`p`，如果`p`抛出异常，靠执行`q`来恢复。
+
+Since `MonadPlus` is not in the Prelude, but rather the Monad library, we must `import` it from the Monad library (the `import` declaration must go at the top of your Haskell module).
+
+>既然`MonadPlus`不是预加载，而是相当于“Monad library”，我们必须从“Monad library”中`import`它（`import`声明必须放在Haskell模块的顶部）。
+
+```haskell
+import Monad( MonadPlus( .. ), guard )
 
 
+instance MonadPlus (StateTransEx s)
+  where
+    -- mzero :: StateTransEx s a
+    mzero = STE( \s -> Nothing )
+    -- mplus ::  StateTransEx s a ->  StateTransEx s a ->  StateTransEx s a
+    (STE p) `mplus` (STE q)  =  STE( \s0 -> case p s0 of
+    					Just (s1, a) -> Just (s1, a)
+    					Nothing -> q s0 )
+
+applySTE (STE p) s = p s
+```
+
+Now, if we execute ```p `mplus` q```, and `p` fails, then the computation will be resumed with `q`. Note that `q` starts with the state that `p` started with, not the state that `p` had reached when the exception ocurred; `p` and `q` can be regarded as alternative computations. Although I've called this exception handling, "backtracking" is arguably a more accurate term.
+
+>现在，如果我们执行```p `mplus` q```,而且`p`失败了，那么计算将会采用`q`恢复。注意`q`采用`p`开始的状态开始，而不是`p`在异常发生时已经到达的状态。`p`和`q`可以被作为代替计算。虽然叫这中方式为异常处理，“回溯”大概是一个更精确的词。
+
+We can use `mplus` and `mzero` to implement backtracking algorithms. Consider the classic problem of finding a way to place 8 queens on an 8 by 8 chess board such that no queen attacks another.
+
+>我们可以用`mplus`和`mzero`实现回溯算法。考虑经典的8皇后问题：在8x8国际象棋上，寻找一种放置8个皇后的方法，使其彼此不能攻击对方。
+
+First the state
+
+>首先定义状态
+
+```haskell
+type QState = ([Int], [Int], [Int])
+```
+
+We use three lists to keep track of three sets: the set of occupied columns, the set of occupied south-west diagonals and the set of occupied south-east diagonals. The south-west diagonals are represented by the difference in the column and row number. The south-east diagonals are represented by the sum of the row and column number. There are functions to get and set each of these components of the state:
+
+>我们用三元列表以三个集合保存历史路径：列占领集合，西南对角线占领集合，以及东南对角线占领集合。西南对角线以列与行数字之差表示。东南对角线以行与列数字之和表示。还有函数来获取或设置每个组件的状态：
+
+```haskell
+getCols = STE( \(cols, swDiags, seDiags) ->
+                Just ((cols, swDiags, seDiags), cols) )
+getSWDiags = STE( \(cols, swDiags, seDiags) ->
+                  Just ((cols, swDiags, seDiags), swDiags) )
+getSEDiags = STE( \(cols, swDiags, seDiags) ->
+                  Just ((cols, swDiags, seDiags), seDiags) )
+
+putCols c = STE( \(cols, swDiags, seDiags) ->
+                  Just ((c:cols, swDiags, seDiags), ()) )
+putSWDiags sw = STE( \(cols, swDiags, seDiags) ->
+                      Just ((cols, sw:swDiags, seDiags), ()) )
+putSEDiags se = STE( \(cols, swDiags, seDiags) ->
+                      Just ((cols, swDiags, se:seDiags), ()) )
+```
+
+We don't want to add a column or a diagonal to a set it is already in. To ensure that we don't, we use the library routine `guard` defined by
+
+>我们不想将列或者对角线重复添加到集合中。为了确保我们不会这么做，我们采用库例程`guard`，`guard`被定义成：
+
+```haskell
+guard true = return()
+guard false = mzero
+```
+
+The following routines fail if the item being added to a set is already in the set:
+
+>如果某项添加到一个已经被添加过的集合中，下面的程序会失败：
+
+```haskell
+guard true = return()
+tryPutCol c =
+	do cols <- getCols
+	   guard (c `notElem` cols)
+	   putCols c
+	   
+tryPutSWDiag sw =
+	do swDiags <- getSWDiags
+	   guard (sw `notElem` swDiags)
+	   putSWDiags sw
+	   
+tryPutSEDiag se =
+	do seDiags <- getSEDiags
+	   guard (se `notElem` seDiags)
+	   putSEDiags se
+```
+
+The next routine attempts to place a queen at a particular spot, failing if the new queen would attack one that is already on the board. (I'm assuming there is no other queen in the same row, so no check is required to see if the row is occupied.)
+
+>下一个例程尝试在一个确定的点放置一个皇后，如果新皇后可以攻击到一个已经被放置的皇后，那么例程就失败。（我能确定没有其他的皇后在同一行，因此不会对行是否占据进行检查）
+
+```haskell
+place r c =
+	do tryPutCol c
+	   tryPutSWDiag (c-r)
+	   tryPutSEDiag (c+r)
+```
+
+The main algorithm to place queens in each of rows `[0..r-1]` of a board with `colNum` columns is:
+
+>在棋盘`colNum`列的每行`[0..r-1]`放置皇后主要的算法是：
+
+```haskell
+queens r colNum =
+	if r == 0
+	then getCols             -- Success, return list of columns
+	else tryEach [0..colNum-1] (\c ->
+		do place (r-1) c
+		   queens (r-1) colNum )
+```
+
+The `tryEach `"loop" is a control structure defined by
+
+>`tryEach`“循环”是一个控制结构，定义成：
+
+```haskell
+tryEach :: MonadPlus m => [a] -> (a -> m b) -> m b
+tryEach [] f = mzero
+tryEach (h:t) f = f h `mplus` tryEach t f
+```
+
+(We could also define `tryEach` in terms of the library function, msum, which takes a list of monad members and combines them with `mplus`: `tryEach xs f = msum (map f xs) )`.
+
+>我们也可以用库函数中的语句来定义`tryEach`，`msum`接受一个单子列表并采用`mplus`来连接他们: `tryEach xs f = msum (map f xs) )`。
+
+To find an arrangement on an 8 by 8 chess board we write:
+
+>寻找8x8象棋盘的排列，我们可以写成这样：
+
+```haskell
+applySTE (queens 8 8) ([], [], [])
+```
+
+###Nondeterminism
+
+>不确定性
+
+The `StateTransEx` monad provides a limited form of nondeterminism. Computations either succeed or fail, but if they succeed, they succeed but once. For example in
+
+>`StateTransEx`单子提供有限形式的非确定性。计算结果或者成功或者失败，但是如果成功，就只会成功一次。看下面的例子：
+
+```haskell
+    do (p `mplus` q)
+       r
+```
+
+if `p` succeeds and then `r` then fails, `q` will not be given a chance to "execute".
+
+>如果`p`成功然后`r`失败了，`q`将没有机会再“执行”。
+
+To get nondeterminism of the sort found in languages such as Icon, SNOBOL, and Prolog, we need to allow a computation to succeed more than once. To create such a monad, we replace the Maybe type constructor with the list type constructor:
+
+为了获得像Icon，SNOBOL，以及Prolog这样语言中类似的不确定性，我们需要允许不止一次计算成功。为了创建这样一个单子，我们将`Maybe`类型的构造函数替换成`list`类型。
 
 
+The type is
+这个类型是：
+
+```haskell
+newtype StateTransMany s a = STM( s -> [(s, a)] )
+```
+
+I leave it as an exercise to define `>>=`, `return`, `mplus`, and `mzero` for this monad, and to change the queens example to generate all solutions to the 8-queens problem.
+
+为这个单子定义`>>=`,`return`,`mplus`,`mzero`等操作留作练习，并修改皇后的那个例子，使其可以产生所有的8-皇后问题的答案。
+
+
+```
+译者注：
+
+来自wiki对nondeterministic programming language的解释
+
+quato : https://en.wikipedia.org/wiki/Nondeterministic_programming
+
+A nondeterministic programming language is a language which can specify, at certain points in the program (called "choice points"), various alternatives for program flow. Unlike an if-then statement, the method of choice between these alternatives is not directly specified by the programmer; the program must decide at run time between the alternatives, via some general method applied to all choice points. A programmer specifies a limited number of alternatives, but the program must later choose between them. ("Choose" is, in fact, a typical name for the nondeterministic operator.) A hierarchy of choice points may be formed, with higher-level choices leading to branches that contain lower-level choices within them.
+
+一个不确定性编程语言是一种能在程序中的确定点（称为“选择点”），为程序流指定多种选择的语言。和if-then语句不同，在这些选择中进行选择的方法不是编程者直接制定的；程序必须在运行时通过一些一般方法应用与所有的选择点来对其进行选择。程序员对可选的情况指定有限的号码，但是程序必须在后面在这些号码之间进行选择。（“选择”，事实上，是一个对非确定性操作符具有象征意义的名字）。选择点的继承可能由较高水平的选择导向包含低水平的选择的分支组成。
+
+One method of choice is embodied in backtracking systems (such as AMB, or unification in Prolog), in which some alternatives may "fail," causing the program to backtrack and try other alternatives. If all alternatives fail at a particular choice point, then an entire branch fails, and the program will backtrack further, to an older choice point. One complication is that, because any choice is tentative and may be remade, the system must be able to restore old program states by undoing side-effects caused by partially executing a branch that eventually failed.
+
+一个在回溯系统中选择方法具体的例子（比如 AMB，或者Prolog中的一致化），在这些例子中，某些选择可能失败，引起程序回溯并尝试其他的选择。如果所有的选择在某个选择点都失败了，那么整个分支都失败，程序将回溯更远到更老的选择点。一个复杂的情况是，由于某些选择是尝试和可以重试的，系统必须能够撤销副作用重回旧的程序状态，这些副作用由部分的执行一个最终失败的分支而引起的。
+
+Another method of choice is reinforcement learning, embodied in systems such as Alisp. In such systems, rather than backtracking, the system keeps track of some measure of success and learns which choices often lead to success, and in which situations (both internal program state and environmental input may affect the choice). These systems are suitable for applications to robotics and other domains in which backtracking would involve attempting to undo actions performed in a dynamic environment, which may be difficult or impractical.
+
+另一个选择的方式是增强学习，具体体现的系统是Alisp，在这样的系统中，相对与回溯，系统保持一些成功量化的轨迹，并学习如何选择更可能导致成功，在这种解决方案中（在内部程序状态和环境输入都可能影响选择）。这样的系统适合应用人工智能和其他其他领域，这些领域回溯法将包含尝试撤销动态环境中的行为影响，这些系统可能很难构建或者不实用。
+```
+
+###The IO Monad
+
+>IO单子
+
+Haskell defines a monad called IO that is used to describe computations that interact with the operating system -- in particular to perform input and output. For example, here is how you can write a function to read a file, printing an error message if the file can not be read
+
+>Haskell定义了一个名为IO的单子，用来描述与操作系统的交互的计算--特别是处理输入和输出。例如，如何写一个函数读文件，如果文件不可读，如何打印错误信息。
+
+```haskell
+maybeReadFile :: String -> IO (Maybe String)
+----
+-- Read a file or print an error message and return Nothing.
+maybeReadFile fileName = catch (do s <- readFile fileName
+                                   return (Just s))
+                               (readErrHandler fileName)
+
+readErrHandler :: String -> IOError -> IO (Maybe String)
+readErrHandler fileName err =
+    do putStr ("Error reading file " ++ fileName
+               ++ " " ++ show err ++ ".\n")
+       return Nothing
+```
+
+You can see that the IO monad also supports exception handling, though with the "catch" function, not the mplus operator. (mplus would be inappropriate because changes to the world can not be undone!)
+
+>你能看到IO单子也支持异常处理，通过`catch`函数实现，而不是`mplus`操作。（`mplus`在这儿不恰当，因为对世界的影响是不能被撤销的！）
+
+In Haskell the main program should be of type IO().
+
+>Haskell中的main程序应该是IO()类型的。
+
+It is often said that pure functional languages can't be used to write interactive programs. At first glance the IO monad seems to contradict this idea.  You can think of it this way: When your functional program is executed, it does not interact with the operating system, it merely computes an object of type IO(), which describes a set of possible interactive computations. An interpreter interacts with the environment to make one of these computations happen. The fact that Haskell is a lazy language is key to this, for the set of computations for many applications is infinite, even if each computation is finite. The choice of which computation is needed is governed by the input; thanks to lazyness, only the computation that is actually required is computed.
+
+>通常说纯函数式编程语言通常不能写出交互式程序。第一感觉是IO单子看起来与这个观点向矛盾。你可以用这样的方式考虑这个问题：当你的函数式程序被执行，它不能与操作系统交互，它仅仅处理一个类型为IO()的对象，这个对象描述一套合适的交互式处理。一个解释器影响环境使得这些处理中的某个行为发生。事实上，Haskell是一个惰性语言，关键就在这儿，因为这套为很多应用采取的处理方式是无限的，甚至如果每个计算都是无限的。
 
 
 
