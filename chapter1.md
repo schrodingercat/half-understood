@@ -1,3 +1,9 @@
+```haskell
+原文出自： http://ncatlab.org/nlab/files/WadlerMonads.pdf
+作者是： Philip Wadler
+本人是函数式编程的初学者，卡在单子这个环节上无法前进。想要理解单子，因此准备了几篇有关单子的文章进行翻译，本文是其中之一。本人英文水准较差，翻译是为了强迫自己理解，不保证准确。
+```
+
 Comprehending Monads
 ====================
 
@@ -620,11 +626,41 @@ These, together with the comprehension laws (5), (6), and (I')--(III'), allow on
 
 >上面这写，加上推导式规则(5),(6),以及(I')--(III'),可以以之进行恒等推理来证明状态处理程序的特性。
 
+###4.3 Array update
 
+> 数组更新
 
+Let `Arr` be the type of arrays taking indexes of type `Ix` and yielding values of type `Val` . The key operations on this type are
 
+>使`Arr`是数组的类型，它的下标类型为`Ix`，通过下标产生的值的类型是`Val`。在数组上的关键操作是：
 
+```haskell
+newarray :: Val -> Arr,
+index    :: Ix -> Arr -> Val,
+update   :: Ix -> Val -> Arr -> Arr
+```
 
+Here `newarray v` returns an array with all entries set to `v`; and `index i a` returns the value at index `i` in array `a`; and `update i v a` returns an array where index `i` has value `v` and the remainder is identical to `a` . In equations,
+
+>这儿的`newarray v`返回一个所有条目都是`v`的数组；`index i a`返回在数组`a`中下标为`i`的值；`update i v a`返回一个数组，这个数组的下标`i`初的值为`v`，其他的都与`a`一样。在下面恒等式中，
+
+```haskell
+index i (new array v)  = v
+index i (update i v a) = v
+index i(update i' v a) = index i a, if i!=i'
+```
+
+The efficient way to implement the update operation is to overwrite the specified entry of the array, but in a pure functional language this is only safe if there are no other pointers to the array extant when the update operation is performed.
+
+>有效率的方式实现更新操作是重写数组中那个确定的条目，但是在纯函数编程中只有当没有其他的指针仍指向这个数组，在更新的时候才是安全的。
+
+Now consider the monad of state transformers taking the state type S = Arr , so that
+
+>现在考虑状态转换器单子接受状态的类型 `S=Arr`， 因此：
+
+```haskell
+type ST x = Arr -> (x,Arr)
+```
 
 
 
