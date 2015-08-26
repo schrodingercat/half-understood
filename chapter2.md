@@ -1,4 +1,10 @@
-Monads for the Working Haskell Programmer 
+```haskell
+原文出自：http://www.engr.mun.ca/~theo/Misc/haskell_and_monads.htm
+作者是：Theodore Norvell
+本人是函数式编程的初学者，卡在单子这个环节上无法前进。想要理解单子，因此准备了几篇有关单子的文章进行翻译，本文是其中之一。本人英文水准较差，翻译是为了强迫自己理解，不保证准确。
+```
+
+Monads for the Working Haskell Programmer
 =========================================
 
 >Haskell程序员的单子
@@ -24,8 +30,6 @@ This short tutorial introduces monads to Haskell programmers. It applies to Hask
 The reader is assumed to have a familiarity with the basics of Haskell programming such as data declarations, function definitions, and lambda expressions. Familiarity with classes and instance declarations will help.
 
 >这篇文章假定读者熟悉一些基本的Haskell编程知识，比如数据声明，函数声明，以及lambda表达式。熟悉类和实例声明会更好。
-
->quote: http://www.engr.mun.ca/~theo/Misc/haskell_and_monads.htm
 
 ###Simulating states without Monads
 
@@ -734,15 +738,175 @@ In Haskell the main program should be of type IO().
 
 It is often said that pure functional languages can't be used to write interactive programs. At first glance the IO monad seems to contradict this idea.  You can think of it this way: When your functional program is executed, it does not interact with the operating system, it merely computes an object of type IO(), which describes a set of possible interactive computations. An interpreter interacts with the environment to make one of these computations happen. The fact that Haskell is a lazy language is key to this, for the set of computations for many applications is infinite, even if each computation is finite. The choice of which computation is needed is governed by the input; thanks to lazyness, only the computation that is actually required is computed.
 
->通常说纯函数式编程语言通常不能写出交互式程序。第一感觉是IO单子看起来与这个观点向矛盾。你可以用这样的方式考虑这个问题：当你的函数式程序被执行，它不能与操作系统交互，它仅仅处理一个类型为IO()的对象，这个对象描述一组可能的交互式运算。一个解释器与环境交互，使得这些运算中的某个运算发生。事实上，Haskell是一个惰性语言，关键就在这儿，因为即使每个计算都是有限的，这套为很多应用采取的计算方式是无限的。选择何种计算方式是必需的，由输入所决定；多亏了惰性，只有计算实际所需的计算。
+>通常说纯函数式编程语言通常不能写出交互式程序。第一感觉是IO单子看起来与这个观点向矛盾。你可以用这样的方式考虑这个问题：当你的函数式程序被执行时，它不会与操作系统交互，它仅仅处理一个类型为IO()的对象，这个对象描述一组可能的交互式运算。有一个解释器与环境交互，使得这些运算中的某个运算发生。事实上，Haskell是一个惰性语言，关键就在这儿，因为即使每个处理都是有限的，而这套为很多应用采取的处理方式是无限的。由输入所决定所选择的处理方式；多亏了惰性，只会处理实际所需的计算。
+
+###Lists as a Monad
+
+>列表作为单子
+
+The list type constructor itself is a simple monad. Its definition is
+
+>列表类型构造器就是一个简单单子。被定义成：
+
+```haskell
+instance Monad [ ] where
+    xs >>= f   =  concat (map f xs)
+    return x   =  [x]
+
+instance MonadPlus [ ] where
+    mzero = []
+    mplus = (++)
+```
+
+(The notation `[ ]` in the first line of each instance declaration refers to the list type constructor, i.e. the function that maps each type to its corresponding list type.)
+
+>每个实例声明的第一行的`[ ]`记号就是列表类型构造器，即，一个将任何类型隐射到list类型的函数。
+
+The definition of the list constructor as a monad allows one to write such things as
+
+>列表构造器作为单子的定义，允许像下面这样的写法：
+
+```haskell
+do a <- [1,2,3]
+   b <- [3,4,5]
+   return (a+b)
+```
+
+This evaluates to
+
+>这相当于：
+
+```haskell
+[4,5,6,5,6,7,6,7,8] ,
+```
+
+just as does the list comprehension
+
+>就像是列表推导式一样：
+
+```haskell
+[ a+b | a <- [1,2,3],
+        b <- [3,4,5] ]
+```
+
+###Monads and Software Engineering
+
+>单子和软件工程
+
+The key to engineering a large software project is to make changes easy..
+
+>大型软件项目工程的关键是要使改变更容易。。
+
+Monads can be used to make functional programs far more adaptable.  You need to insert another processing step? Go right ahead, don't worry about plumbing the state. You need another variable in the state? No problem, just change the underlying state and the basic members of the monad. You need to output messages from your computation? No problem, just change the monad to add an output string. You need to handle exceptions or nondeterminism? No problem, just change the monad.
+
+>单子能够使函数式程序要容易修改得多。你需要插入另外一个处理步骤？直接去做吧，不要担心传输状态。你需要在状态中放入另一个变量？没有问题，之需要修改被隐藏起来的状态以及单子的基本成员就行。你需要在处理过程中输出信息？没有问题，只要修改单子，增加一个输出字符串。你需要处理异常或者是非确定性？没有问题，只要修改单子就好。
+
+It might be said that Haskell with monads does not give you much that you won't find in an imperative, nondeterministic language, with extensible, strong, but generic typing, and a powerful applicative expression sublanguage. The problem is there is no such language in common use. Monads make up for many of the drawbacks of Haskell relative to imperative languages, but without giving up any of its strengths.
+
+>应该说，带单子的Haskell相对命令式语言，非确定性语言，没有在扩展性和健壮性上给于你更多，而是体现在一般化类型和强大的表达能力子语言上。问题是没有一个这样的语言被广泛使用。单子弥补了Haskell相对于命令式程序的一些缺点，而并没有放弃任何它本身的优点。
 
 
+###More information
 
+>更多信息
 
+Monads can be used for parsing. By using the remaining input as state, the `StateTrans` monad can be used to write deterministic recursive-descent parsers. Better yet, the `StateTransEx` and `StateTransMany` parsers can (respectively) be used to create backtracking parsers and non-deterministic parsers (allowing ambiguous grammars).  Monadic parsing is the topic of the following paper:
 
+>单子可以被用于语法解析。通过采用将输入保存为状态的方法，`StateTrans`单子可以用来写出确定性递归下行解析器。更甚者，`StateTransEx`和`StateTransMany`解析器能够（分别）用来创建回溯解析器和非确定性解析器（允许模棱两可的语法检查）。单子解析器的论文有：
 
+Graham Hutton and Erik Meijer, Monadic parser combinators（单子解析器组合）, Technical Report NOTTCS-TR-96-4, Department of Computer Science, University of Nottingham.
 
+Available on the Web at http://www.cs.nott.ac.uk/Department/Techreports/96-4.html
 
+I like to add an output for error and warning message, to the monad, and the possibility of fatal errors that can not be recovered from. I also use a clearer separation between parsing and lexical analysis than Hutton and Meijer. My own monadic parsing combinators are available on the web at http://www.engr.mun.ca/~theo/Misc/index.html#ParsingMonad
+
+>我想要将单子的错误和警告信息输出，以及处理不可恢复的严重错误。我们也使用比Hutton和Meijer更加清晰的分离语法分析和字典分析的方法。我自己的单子解析组合器是可用的，网址是：http://www.engr.mun.ca/~theo/Misc/index.html#ParsingMonad
+
+The IO monad and the theory behind it is reported in
+
+>IO单子以及它后面的理论发表在：
+
+Philip Wadler, How to declare an imperative, ACM Computing Surveys, 29(3):240--263, September 1997.
+
+Available on the Web at http://www.cs.bell-labs.com/who/wadler/topics/monads.html.
+
+An extension of the IO monad for use in systems with graphical user interfaces, is the GUI monad that lets Haskell or Gofer interact with the tk library. The GUI monad, many widgets and operators to compose widgets can be found in the TkGofer and TkHaskell systems. See http://www.informatik.uni-ulm.de/pm/ftp/tkgofer.html and http://www.dcs.gla.ac.uk/~nww/TkHaskell/TkHaskell.html.
+
+>一个IO单子的扩展用在图形用户界面上，这个扩展是一个GUI单子，使Haskell和Gofer采用tk库进行交互。TkGofer和TkHaskell中，GUI单子，一些控件和操作用来将控件组合起来。参看http://www.informatik.uni-ulm.de/pm/ftp/tkgofer.html 和 http://www.dcs.gla.ac.uk/~nww/TkHaskell/TkHaskell.html.
+
+One of the best introductions to monads is in
+
+>最佳单子介绍之一：
+
+Philip Wadler, Monads for functional programming（函数式编程的单子）, in M. Broy, editor, Marktoberdorf Summer School on Program Design Calculi, Springer Verlag, NATO ASI Series F: Computer and systems sciences, Volume 118, August 1992. Also in J. Jeuring and E. Meijer, editors, Advanced Functional Programming, Springer Verlag, LNCS 925, 1995.
+
+Available on the Web at http://www.cs.bell-labs.com/who/wadler/topics/monads.html.
+
+The first paper that I know of  to deal with monads as a tool in functional programming is
+
+>据我所知，第一篇介绍单子以工具的形式出现在函数式编程中的论文是：
+
+Philip Wadler, The essence of functional programming(函数式编程的本质). Invited talk, 19'th Symposium on Principles of Programming Languages, ACM Press, Albuquerque, January 1992.
+
+Available on the Web at http://www.cs.bell-labs.com/who/wadler/topics/monads.html.
+
+There is a whole lot that could be said about the mathematical theory of monads. It is my belief that most programmers don't need to know much of this theory to reap the benefits of programming with monads. Philip Wadler's papers give an introduction to the mathematics and pointers back to the earlier, more mathematical, literature.
+
+>这是大批的关于单子的数学原理的文章。我相信大多数程序员不需要知道太多的这些原理就能获得利用单子进行程序开发的好处。Philip Wadler 的论文介绍了这些数学并且提供出更早的跟具有数学性的著作。
+
+###A Note for Gofer Programmers
+
+>略
+
+###A Note for Haskell 1.3 and 1.4 users
+
+In Haskell 1.3 and 1.4  `mzero` is called `zero` and `mplus` is called `++`. There is a separate class `MonadZero`, declaring the `zero`. All the classes are declared in the Prelude, so you do not need to import from Monad.
+
+>在Haskell 1.3和1.4中，`mzero`被称为`zero`并且`mplus`被称为`++`。有一个独立的类`MonadZero`声明`zero`。所有的类被声明到预加载库中，因此你不需要从Monad中import。
+
+Haskell 1.4 supports the comprehension syntax for Monads (see the Gofer section).
+
+>Haskell 1.4 支持单子推导语法（见Gofer章节）
+
+###End Notes
+
+>尾注
+
+Monoids
+
+>幺半群
+
+A monoid is an algebraic structure consisting of a set S and an operation * with the following properties
+
+>幺半群是一个代数结构，由一个集合`S`和一个具有下面属性的操作`*`组成：
+
+Closure:
+
+> 封闭性：
+
+`x*y` is in `S`, if `x` and `y` are both in `S`.
+
+>如果`x`和`y`都属于`S`，那么`x*y`也属于`S`。
+
+Associativity:
+
+>结合性：
+
+`x*(y*z) = (x*y)*z`  for all `x`, `y`, and `z` in `S`.
+
+>`x*(y*z) = (x*y)*z`对于任何属于`S`的`x`, `y`, 和 `z`都成立.
+
+Identity:
+
+>同一性：
+
+There is an element `e` in `S` such that `e*x= x*e = x` , for all `x` in `S` .
+
+>`S`中存在一个元素`e`，对于所有`S`中的元素`x`都满足`e*x= x*e = x`。
+
+Examples of monoids are the integers with multiplication as the operator, character strings with catenation as the operator, functions with composition as the operator, and programming langauge statements with sequential composition as the operator. Also any group is a monoid and any monoid that has inverses is a group.
+
+>幺半群的例子是带乘法的整型，链接作为操作的字符串，以组合作为操作的函数，顺序合成作为操作的程序语言语句。同样，任何群都是一个幺半群，任何有逆的幺半群是一个群。
 
 
 
