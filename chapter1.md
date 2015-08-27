@@ -662,11 +662,28 @@ Now consider the monad of state transformers taking the state type S = Arr , so 
 type ST x = Arr -> (x,Arr)
 ```
 
+Variants of the `fetch` and `assign` operations can be defined to act on an array entry specified by a given index, and a variant of `init` can be defined to initialise all entries in an array to a given value:
 
+>定义变异的`fetch`和`assign`操作，这些操作可以根据给定的下标作用于数组的指定成员，定义变异的`init`，根据给定值来初始化数组中的所有成员。
 
+```haskell
+fetch      :: Ix -> ST Val
+fetch i    = \a -> [(v,a) | v <- index i a]_Str
 
+assign     :: Ix -> Val -> ST()
+assign i v = \a -> ((),update i v a)
 
+init       :: Val -> ST x -> x
+init v x'  =  [x | (x,a) <- x'(newarray v)]_Id
+```
 
+A Str-comprehension is used in `fetch` to force the entry from `a` to be fetched before `a` is made available for further access; this is essential in order for it to be safe to update `a` by overwriting.
+
+>严格单子推导式用在`fetch`中，强迫在`a`变得可用前,从中取出要取的成员，以提供进一步的访问。这是基本的靠重写的方式安全更新`a`的顺序。
+
+Now, say we make `ST` into an abstract data type such that the only operations on values of `type ST` are `map_ST` , `unit_ST` , `join_ST` , `fetch` , `assign` , and `init` . It is straightforward to show that each of these operations, when passed the sole pointer to an array, returns as its second component the sole pointer to an array. Since these are the only operations that may be used to build a term of `type ST` , this guarantees that it is safe to implement the assign operation by overwriting the specified array entry.
+
+>现在，可以说我们使`ST`成为一个抽象数据类型，以致只有`map_ST` , `unit_ST` , `join_ST` , `fetch` , `assign` , 和 `init`等操作可作用于`type ST`类型的值上。很显然，每一个操作，当传递一个指向数组的单独指针时，将在返回值的第二个分量中返回一个指向数组的单独指针。既然这些是仅有的构造`type ST`语句的操作，这就保证可以安全的实现以重写的方式对一个特点的数组成员进行赋值。
 
 
 

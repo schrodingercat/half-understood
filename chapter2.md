@@ -826,7 +826,7 @@ The IO monad and the theory behind it is reported in
 
 >IO单子以及它后面的理论发表在：
 
-Philip Wadler, How to declare an imperative, ACM Computing Surveys, 29(3):240--263, September 1997.
+Philip Wadler, How to declare an imperative(如何声明命令), ACM Computing Surveys, 29(3):240--263, September 1997.
 
 Available on the Web at http://www.cs.bell-labs.com/who/wadler/topics/monads.html.
 
