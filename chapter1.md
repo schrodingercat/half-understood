@@ -800,9 +800,28 @@ can be read "to evaluate `Plus e1 e2` , first evaluate `e1` yielding the value `
 
 >可以被读成：“要计算 `Plus e1 e2`，首先计算`e1`并生成`v`，然后计算`e2`并生成`v2`，然后将`v1`和`v2`相加”。不幸的是：强加了一个虚假的顺序在计算`e1`和`e2`上（原程序暗示没有这样的顺序）。这个顺序没有关系，因为虽然exp依赖状态，而并不改变它。但是，如前面所述，采用这样状态转换器单子没有方法可以表示这个顺序。为了弥补这个缺陷，我们将介绍第二个单子，那就是状态阅读器。
 
+###4.5 State readers
 
+>状态阅读器
 
+Recall that the monad of state transformers, for a fixed type `S` of states, is given by
 
+回忆状态转换器单子，如果状态类型确定为`S`，给定为：
+
+```haskell
+type ST x = S -> (x,S)
+```
+
+The monad of state readers, for the same type S of states, is given by
+
+>状态阅读器单子，同样状态类型确定为`S`，给定为：
+
+```haskell
+type SR x   = S -> x
+map_SR f x' = \s -> [f x | x <- x' s]_Id
+unit_SR x   = \s -> x
+join_SR x'' = \s -> [x | x' <- x''s, x <- x's]_Id
+```
 
 
 
