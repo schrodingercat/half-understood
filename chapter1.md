@@ -685,6 +685,140 @@ Now, say we make `ST` into an abstract data type such that the only operations o
 
 >现在，可以说我们使`ST`成为一个抽象数据类型，以致只有`map_ST` , `unit_ST` , `join_ST` , `fetch` , `assign` , 和 `init`等操作可作用于`type ST`类型的值上。很显然，每一个操作，当传递一个指向数组的单独指针时，将在返回值的第二个分量中返回一个指向数组的单独指针。既然这些是仅有的构造`type ST`语句的操作，这就保证可以安全的实现以重写的方式对一个特点的数组成员进行赋值。
 
+The key idea here is the use of the abstract data type. Monad comprehensions are not essential for this to work, they merely provide a desirable syntax.
+
+>主要思想是使用抽象数据类型。单子推导式不是一切可以工作的基础，它们仅仅提供一个可用的语法。
+
+###4.4 Example: Interpreter
+
+>样例：解析器
+
+Consider building an interpreter for a simple imperative language. The store of this language will be modelled by a state of type Arr , so we will take Ix to be the type of variable names, and Val to be the type of values stored in variables. The abstract syntax for this language is represented by the following data types:
+
+>考虑构建一个简单命令式语言的解析器。这个语言的存储方式采用一个`Arr`类型的状态为模型，因此我们将使`Ix`作为变量名的类型，并且`Val`作为存储在变量中的值的类型。这个语言的抽象语法以下面的数据类型的形式展现：
+
+```haskell
+data Exp  = Var Ix | Const Val | Plus Exp Exp
+data Com  = Asgn Ix Exp | Seq Com Com | If Exp Com Com
+data Prog = Prog Com Exp
+```
+
+An expression is a variable, a constant, or the sum of two expressions; a command is an assignment, a sequence of two commands, or a conditional; and a program consists of a command followed by an expression.
+
+>一个表达式是一个变量，常量或者是两个表达式只和；一个命令是一个赋值语句，一个由两个命令组成的序列，或者是一个选择语句；一个程序由一个命令紧接着一个表达式组成。
+
+A version of the interpreter in a pure functional language is shown in Figure 4. The interpreter can be read as a denotational semantics for the language, with three semantic functions:
+
+>图4是采用纯函数语言写的某个版本的解析器。这个语义可以作为这个语言的指称语义来阅读，具有三个语义函数：
+
+```haskell
+exp :: Exp -> Arr -> Val
+com :: Com -> Arr -> Arr
+prog :: Prog -> Val
+```
+
+```haskell
+--Figure 4 :Interpreter in a pure functional language
+exp                 :: Exp -> Arr -> Val
+exp (Var i ) a       = index i a
+exp (Const v ) a     = v
+exp (Plus e1 e2 ) a  = exp e1 a + exp e2 a
+
+com                 :: Com -> Arr -> Arr
+com (Asgn i e ) a    = update i (exp e a ) a
+com (Seq c1 c2 ) a   = com c2 (com c1 a )
+com (If e c1 c2 ) a  = if exp e a = 0 then com c1 a else com c2 a
+
+prog                :: Prog -> Val
+prog (Prog c e )     = exp e (com c (newarray 0 ))
+```
+
+
+The semantics of an expression takes a store into a value; the semantics of a command takes a store into a store; and the semantics of a program is a value. A program consists of a command followed by an expression; its value is determined by applying the command to an initial store where all variables have the value 0 , and then evaluating the expression in the context of the resulting store.
+
+>表达式的语义将一个存储器变为一个值；命令语义将一个存储变为另一个存储；程序语义就是一个值。一个程序由表达式以及在它之上的命令构成；它的值由在一个已经被初始化为0的存储上应用命令，并在最后存储器的上下文中，计算表达式来决定。
+
+The interpreter uses the array operations `newarray` , `index` , and `update` . As it happens, it is safe to perform the updates in place for this program, but to discover this requires using one of the special analysis techniques cited in the introduction.
+
+>解析器使用数组的操作`newarray`，`index`，已经`update`。当它运行时，这个程序中进行更新操作是安全的，而发现这点需要使用在前言中引入的一种特别的分析技术。
+
+The same interpreter has been rewritten in Figure 5 using state transformers. The semantic functions now have the types:
+
+>图5是采用状态转换器实现的相同的解析器。语义函数现在的类型是：
+
+```haskell
+exp  :: Exp -> ST Val
+com  :: Com -> ST ()
+prog :: Prog -> Val
+```
+
+```haskell
+--Figure 5: Interpreter with state transformers
+exp               :: Exp -> ST Val
+exp (Var i)      = [v | v <- fetch i ]_ST
+exp (Const v)    = [v]_ST
+exp (Plus e1 e2) = [v1 + v2 | v1 <- exp e1, v2 <- exp e2]_ST
+
+com               :: Com -> ST ()
+com (Asgn i e)    = [() | v <- exp e, () <- assign i v ]_ST
+com (Seq c1 c2)   = [() | () <- com c1, () <- com c2 ]_ST
+com (If e c1 c2)  = [() | v <- exp e, () <- if v = 0 then com c1 else com c2 ]_ST
+
+prog              :: Prog -> Val
+prog (Prog c e)   = init 0 [v | () <- com c, v <- exp e]_ST
+```
+
+The semantics of an expression depends on the state and returns a value; the semantics of a command transforms the state only; the semantics of a program, as before, is just a value. According to the types, the semantics of an expression might alter the state, although in fact expressions depend the state but do not change it - we will return to this problem shortly.
+
+>表达式语义获取一个状态并返回一个值；命令语义只转换状态；程序语义，和以前一样，只是一个值。根据类型，表达式语义可能会更改状态，虽然事实上表达式不会改变所依赖的状态--我们会直接返回到程序中。
+
+The abstract data type for ST guarantees that it is safe to perform updates (indicated by assign) in place - no special analysis technique is required. It is easy to see how the monad interpreter can be derived from the original, and (using the definitions given earlier) the proof of their equivalence is straightforward.
+
+>`ST`抽象数据类型确保可以安全的进行适当的更新操作（确切的说是用`assign`操作）-- 不需要专门的分析技术。可以很容易看出单子解析器如何演变，并且（采用之前给出的定义）它们等价的证明是显而易见的。
+
+The program written using state transformers has a simple imperative reading. For instance, the line
+
+>采用状态转换器写一个简单的命令式读取程序。例如这一行：
+
+```haskell
+com(Seq c1 c2) = [()|() <- com c1, () <- com c2]_ST
+```
+
+can be read "to evaluate the command `Seq c1 c2` , first evaluate `c1` and then evaluate `c2` ". The types and the use of the ST comprehension make clear that these operations transform the state; further, that the values returned are of type () makes it clear that only the effect on the state is of interest here.
+
+>可以被读成：“计算命令`Seq c1 c2`，首先计算`c1`，然后再计算`c2`”。类型和ST推导式的使用，使这些操作对状态的转换更清晰；之后，返回`()`类型使清晰的认识到影响状态是这儿唯一感兴趣的事情。
+
+One drawback of this program is that it introduces too much sequencing. The line
+
+>这个程序的缺点是引入太多的定序。这行：
+
+```haskell
+exp (Plus e1 e2) = [v1 + v2 | v1 <- exp e1, v2 <- exp e2]_ST
+```
+
+can be read "to evaluate `Plus e1 e2` , first evaluate `e1` yielding the value `v1` , then evaluate `e2` yielding the value `v2` , then add `v1` and `v2` ". This is unfortunate: it imposes a spurious ordering on the evaluation of `e1` and `e2` (the original program implies no such ordering). The order does not matter because although exp depends on the state, it does not change it. But, as already noted, there is no way to express this using just the monad of state transformers. To remedy this we will introduce a second monad, that of state readers.
+
+>可以被读成：“要计算 `Plus e1 e2`，首先计算`e1`并生成`v`，然后计算`e2`并生成`v2`，然后将`v1`和`v2`相加”。不幸的是：强加了一个虚假的顺序在计算`e1`和`e2`上（原程序暗示没有这样的顺序）。这个顺序没有关系，因为虽然exp依赖状态，而并不改变它。但是，如前面所述，采用这样状态转换器单子没有方法可以表示这个顺序。为了弥补这个缺陷，我们将介绍第二个单子，那就是状态阅读器。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
