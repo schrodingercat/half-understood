@@ -691,11 +691,11 @@ The key idea here is the use of the abstract data type. Monad comprehensions are
 
 ###4.4 Example: Interpreter
 
->样例：解析器
+>样例：解释器
 
 Consider building an interpreter for a simple imperative language. The store of this language will be modelled by a state of type Arr , so we will take Ix to be the type of variable names, and Val to be the type of values stored in variables. The abstract syntax for this language is represented by the following data types:
 
->考虑构建一个简单命令式语言的解析器。这个语言的存储方式采用一个`Arr`类型的状态为模型，因此我们将使`Ix`作为变量名的类型，并且`Val`作为存储在变量中的值的类型。这个语言的抽象语法以下面的数据类型的形式展现：
+>考虑构建一个简单命令式语言的解释器。这个语言的存储方式采用一个`Arr`类型的状态为模型，因此我们将使`Ix`作为变量名的类型，并且`Val`作为存储在变量中的值的类型。这个语言的抽象语法以下面的数据类型的形式展现：
 
 ```haskell
 data Exp  = Var Ix | Const Val | Plus Exp Exp
@@ -709,7 +709,7 @@ An expression is a variable, a constant, or the sum of two expressions; a comman
 
 A version of the interpreter in a pure functional language is shown in Figure 4. The interpreter can be read as a denotational semantics for the language, with three semantic functions:
 
->图4是采用纯函数语言写的某个版本的解析器。这个语义可以作为这个语言的指称语义来阅读，具有三个语义函数：
+>图4是采用纯函数语言写的某个版本的解释器。这个语义可以作为这个语言的指称语义来阅读，具有三个语义函数：
 
 ```haskell
 exp :: Exp -> Arr -> Val
@@ -740,11 +740,11 @@ The semantics of an expression takes a store into a value; the semantics of a co
 
 The interpreter uses the array operations `newarray` , `index` , and `update` . As it happens, it is safe to perform the updates in place for this program, but to discover this requires using one of the special analysis techniques cited in the introduction.
 
->解析器使用数组的操作`newarray`，`index`，已经`update`。当它运行时，这个程序中进行更新操作是安全的，而发现这点需要使用在前言中引入的一种特别的分析技术。
+>解释器使用数组的操作`newarray`，`index`，已经`update`。当它运行时，这个程序中进行更新操作是安全的，而发现这点需要使用在前言中引入的一种特别的分析技术。
 
 The same interpreter has been rewritten in Figure 5 using state transformers. The semantic functions now have the types:
 
->图5是采用状态转换器实现的相同的解析器。语义函数现在的类型是：
+>图5是采用状态转换器实现的相同的解释器。语义函数现在的类型是：
 
 ```haskell
 exp  :: Exp -> ST Val
@@ -774,7 +774,7 @@ The semantics of an expression depends on the state and returns a value; the sem
 
 The abstract data type for ST guarantees that it is safe to perform updates (indicated by assign) in place - no special analysis technique is required. It is easy to see how the monad interpreter can be derived from the original, and (using the definitions given earlier) the proof of their equivalence is straightforward.
 
->`ST`抽象数据类型确保可以安全的进行适当的更新操作（确切的说是用`assign`操作）-- 不需要专门的分析技术。可以很容易看出单子解析器如何演变，并且（采用之前给出的定义）它们等价的证明是显而易见的。
+>`ST`抽象数据类型确保可以安全的进行适当的更新操作（确切的说是用`assign`操作）-- 不需要专门的分析技术。可以很容易看出单子解释器如何演变，并且（采用之前给出的定义）它们等价的证明是显而易见的。
 
 The program written using state transformers has a simple imperative reading. For instance, the line
 
@@ -790,7 +790,7 @@ can be read "to evaluate the command `Seq c1 c2` , first evaluate `c1` and then 
 
 One drawback of this program is that it introduces too much sequencing. The line
 
->这个程序的缺点是引入太多的定序。这行：
+>这个程序的缺点是引入太多的对计算顺序的约定。这行：
 
 ```haskell
 exp (Plus e1 e2) = [v1 + v2 | v1 <- exp e1, v2 <- exp e2]_ST
@@ -798,7 +798,7 @@ exp (Plus e1 e2) = [v1 + v2 | v1 <- exp e1, v2 <- exp e2]_ST
 
 can be read "to evaluate `Plus e1 e2` , first evaluate `e1` yielding the value `v1` , then evaluate `e2` yielding the value `v2` , then add `v1` and `v2` ". This is unfortunate: it imposes a spurious ordering on the evaluation of `e1` and `e2` (the original program implies no such ordering). The order does not matter because although exp depends on the state, it does not change it. But, as already noted, there is no way to express this using just the monad of state transformers. To remedy this we will introduce a second monad, that of state readers.
 
->可以被读成：“要计算 `Plus e1 e2`，首先计算`e1`并生成`v`，然后计算`e2`并生成`v2`，然后将`v1`和`v2`相加”。不幸的是：强加了一个虚假的顺序在计算`e1`和`e2`上（原程序暗示没有这样的顺序）。这个顺序没有关系，因为虽然exp依赖状态，而并不改变它。但是，如前面所述，采用这样状态转换器单子没有方法可以表示这个顺序。为了弥补这个缺陷，我们将介绍第二个单子，那就是状态阅读器。
+>可以被读成：“要计算 `Plus e1 e2`，首先计算`e1`并生成`v`，然后计算`e2`并生成`v2`，然后将`v1`和`v2`相加”。不幸的是：强加了一个虚假的顺序在计算`e1`和`e2`上（程序原本暗示是没有这样的顺序）。这个顺序其实是无所谓的，因为虽然exp依赖状态，但并不改变它。但是，如前面所述，依然采用状态转换器单子的话，没有方法可以表达这个（顺序无关特点）。为了弥补这个缺陷，我们将介绍第二个单子，那就是状态阅读器。
 
 ###4.5 State readers
 
@@ -822,6 +822,480 @@ map_SR f x' = \s -> [f x | x <- x' s]_Id
 unit_SR x   = \s -> x
 join_SR x'' = \s -> [x | x' <- x''s, x <- x's]_Id
 ```
+
+Here `x'` is a variable of type `SR x` , just as `x'` is a variable of type `ST x` . A state reader of type `x` takes a state and returns a value (of type `x` ), but no new state. The `unit` takes the value `x` into the state transformer `\s -> x` that ignores the state and returns `x` . We have that
+
+>这儿的`x'`是类型`SR x`的变量，就像`x‘`是类型`ST x`的变量一样。一个状态阅读器类型`x`接收一个状态并返回一个值（`x`类型的），但是没有新状态产生。函数`unit`接收一个值`x`，并将它放入忽略新状态而返回`x`的状态转换器中状态转换器。我们有：
+
+```haskell
+[(x,y) | x <- x', y <- y']_SR = \s -> [(x,y) | x <- x's, y <- y's]_Id
+```
+
+This applies the state readers `x'` and `y'` to the state `s` , yielding the values `x` and `y` , which
+are returned in a pair.
+
+>可以应用状态转换器`x'`和`y'`到状态`s`上，并生成`x`和`y`成对返回。
+
+It is easy to see that:
+
+>容易看出：
+
+```haskell
+[(x,y) | x <- x', y <- y']_SR = [(x,y) | y <- y', x <- x']_SR
+```
+
+so that the order in which `x'` and `y'` are computed is irrelevant. A monad with this property is called commutative, since it follows that
+
+>因此，`x'`和`y'`的计算顺序是无影响的。一个单子如果满足下面的规则，则称为满足交互律。
+
+```haskell
+[t | p, q]_SR = [t | q, p]_SR
+```
+
+for any term `t` , and any qualifiers `p` and `q` such that `p` binds no free variables of `q` and vice-versa. Thus state readers capture the notion of order independence that we desire for expression evaluation in the interpreter example.
+
+>对于任何语句`t`，和任何限定词`p`和`q`，如果`p`没有绑定任何`q`的自由变量以及反之亦然。如此状态阅读器获得了，我们希望在解释器例子中表达式计算的顺序独立性概念。
+
+Two useful operations in this monad are:
+
+>在这个单子中，两个有用的操作是：
+
+```haskell
+fetch :: SR S
+fetch =  \s -> s
+
+ro    :: SR x -> ST x
+ro x' =  \s -> [(x,s) | x <- x's]_Id
+```
+
+The first is the equivalent of the previous `fetch` , but now expressed as a state reader rather than a state transformer. The second converts a state reader into the corresponding state transformer: one that returns the same value as the state reader, and leaves the state unchanged. (The name `ro` abbreviates "read only".)
+
+>第一个与以前的`fetch`函数相同，不过现在专门作为状态阅读器而不是状态转换器。第二个将一个状态阅读器转换为对应的状态转换器：不改变状态，返回与状态阅读器一样的值。（名字 `ro` 是 ”read only“的缩写）
+
+In the specific case where `S` is the array type `Arr` , we define
+
+>特别的，当`S`是数组类型`Arr`时，我们定义：
+
+```haskell
+fetch   :: Ix -> SR Val
+fetch i =  \a -> index i a
+```
+
+In order to guarantee the safety of update by overwriting, it is necessary to modify two of the other definitions to use Str-comprehensions rather than Id-comprehensions:
+
+>为了确保安全的以重写的方式更新，有必要采用Str推导式代替Id推导式修改另外两个定义：
+
+```haskell
+map_SR f x' = \a -> [f x | x <- x' a]_Str
+ro x'       = \a -> [(x,a) | x <- x' a]_Str
+```
+
+These correspond to the use of an Str-comprehension in the ST version of fetch .
+
+>这些对应ST版本采用Str推导式的`fetch`。
+
+Thus, for arrays, the complete collection of operations on state transformers and state readers consists of
+
+>这样，对数组来说，状态转换器和状态阅读器所有的操作集合由下面几个：
+
+fetch  :: Ix -> SR Val
+assign :: Ix -> Val -> ST()
+ro     :: SR x -> ST x
+init   :: Val -> ST x -> x
+
+together with `map_SR` , `unit_SR` , `join_SR` and `map_ST` , `unit_ST` , `join_ST` . These ten operations should be defined together and constitute all the ways of manipulating the two mutually defined abstract data types `SR x` and `ST x` . It is straightforward to show that each operation of type `SR`, when passed an array, returns a value that contains no pointer to that array once it has been reduced to weak head normal form (WHNF); and that each operations of type `ST` , when passed the sole pointer to an array, returns as its second component the sole pointer to an array. Since these are the only operations that may be used to build values of types `SR` and `ST` , this guarantees that it is safe to implement the `assign` operation by overwriting the specified array entry. (The reader may check that the Str-comprehensions in `map_SR` and `ro` are essential to guarantee this property.)
+
+>以及`map_SR` , `unit_SR` , `join_SR` 和 `map_ST` , `unit_ST` , `join_ST`一起。这十个操作应该定义在一起，并构成两种定义上相关的抽象数据类型`SR x`和`ST x`的所有处理方法。直接的表明，当传递一个数组的时候，每个`SR`类型的操作，一但被计算为弱头正则形式，会返回一个不再指向那个数组的值；并且每个`ST`类型的操作，当传入独立指向数组的指针时，将在第二分量返回指向那个数组的指针。既然这些是唯一用来构建`SR`和`ST`类型值的操作，这就确保可以安全的实现以重写某个数组单元的方式的`assign`操作。（阅读器会检查`map_SR`和`ro`的Str推导式，这是确保这个特性的基础）
+
+Returning to the interpreter example, we get the new version shown in Figure 6. The only difference from the previous version is that some occurrences of `ST` have changed to `SR` and that `ro` has been inserted in a few places. The new typing
+
+>回到解释器的例子，我们得到在图6中的新版本。与之前版本的唯一不同在于，一些`ST`中发生的事件已经被修改成`SR`了，而且几个地方加入了`ro`。新的类型是：
+
+```haskell
+exp :: Exp -> SR Val
+```
+
+```haskell
+--Figure 6: Interpreter with state transformers and readers
+exp             :: Exp -> SR Val
+exp(Var i)      =  [v | v <- fetch i]_SR
+exp(Const v)    =  [v]_ST
+exp(Plus e1 e2) =  [v1+v2 | v1 <- exp e1, v2 <- exp e2]_SR
+
+com             :: Com -> ST()
+com(Asgn i e)   =  [() | v <- ro(exp e), () <- assign i v]_ST
+com(Seq c1 c2)  =  [() | () <- com c1, () <- com c2]_ST
+com(If e c1 c2) =  [() | v <- ro(exp e), () <- if v=0 then com c1 else com c2]_ST
+
+prog            :: Prog -> Val
+prog(Prog c e)  =  init 0 [v | () <- com c, v <- ro(exp e)]_ST
+```
+
+makes it clear that `exp` depends on the state but does not alter it. A proof that the two versions are equivalent appears in Section 6.
+
+>可以清晰的看出，`exp`依赖状态而不是改变它。这两个版本等价的证明在第6节。
+
+The excessive sequencing of the previous version has been eliminated. The line
+
+>之前版本的过多的排序已经被消除。这一行：
+
+```haskell
+exp(Plus e1 e2) = [v1+v2 | v1 <- exp e1, v2 <- exp e2]_SR
+```
+
+can now be read "to evaluate `Plus e1 e2` , evaluate `e1` yielding the value `v1` and evaluate `e2` yielding the value `v2` , then add `v1` and `v2` ". The order of qualifiers in an SR-comprehension is irrelevant, and so it is perfectly permissible to evaluate `e1` and `e2` in any order, or even concurrently.
+
+>现在可以读成”要计算`Plus e1 e2`，需要计算`e1`生成值`v1`并计算`e2`生成`v2`，然后将`v1`和`v2`相加。限定词在SR推导式中是顺序无关的，因此它完美的允许以任何顺序计算`e1`和`e2`，甚至是并发的。
+
+The interpreter derived here is similar in structure to one in [Wad90], which uses a type system based on linear logic to guarantee safe destructive update of arrays. (Related type systems are discussed in [GH90, Wad91].) However, the linear type system uses a "let!" construct that suffers from some unnatural restrictions: it requires hyperstrict evaluation, and it prohibits certain types involving functions. By contrast, the monad approach requires only strict evaluation, and it places no restriction on the types. This suggests that a careful study of the monad approach may lead to an improved understanding of linear types and the "let!" construct.
+
+>这儿的解释器有些类似于[Wad90]中的某个结构，这个结构采用基于线性逻辑的类型系统来确保安全的的更新数组。(类型系统相关的讨论在[GH90,Wad91]中)。然而，线性类型系统采用了一个拥有奇怪限制的“let!”构造：它要求超级严格的计算，并且它禁止类型包含函数。相对的，单子方法只要求严格的计算，并且在类型上并无严格限制。这样我们就可以假定，注重单子方法的研究可能提升对线性类型和“let!”构造的理解。
+
+##5 Filters
+
+>5 过滤器
+
+So far, we have ignored another form of qualifier found in list comprehensions, the filter. For list comprehensions, we can define filters by
+
+>至今为止，我们都忽略了列表推导式中限定词的另外一种格式，过滤器。在列表推导式中，我们能这样定义过滤器：
+
+```haskell
+[t | b] = if b then [t] else []
+```
+
+where `b` is a boolean-valued term. For example,
+
+>这儿`b`是一个布尔值语句。例如：
+
+```haskell
+  [x | x <- [1,2,3], odd x]
+= join [[x | odd x] | x <- [1,2,3]]
+= join [[1 | odd 1], [2 | odd 2], [3 | odd 3]]
+= join [[1], [], [2]]
+= [1, 3]
+```
+
+Can we define filters in general for comprehensions in an arbitrary monad `M` ?  The answer is yes, if we can define `[]` for `M` . Not all monads admit a useful definition of `[]`, but many do.
+
+>我们能为任意单子`M`的推导式定义一般化的过滤器吗？如果我们能定义`M`的`[]`，那答案为是。不是所有的单子都拥有`[]`定义，但是大多数都是具有的。
+
+Recall that comprehensions of the form `[t]` are defined in terms of the qualifier A, by taking `[t] = [t | A]`, and `A` that is a `unit` for qualifier composition,
+
+>回忆一下型如`[t]`的推导式使用限定词A的语句定义，如`[t] = [t | A]`，并且`A`在限定词符合中作为`unit`。
+
+```haskell
+[t | A, q] = [t | q] = [t | q, A]
+```
+
+Similarly, we will define comprehensions of the form `[]` in terms of a new qualifier, `Φ`, by taking `[] = [t | Φ]`, and we will require that `Φ` is a zero for qualifier composition,
+
+>类似的，我们将在一个新的限定词`Φ`语句中定义`[]`形式的推导式，如`[] = [t | Φ]`，并且我们要求`Φ`对于限定词组合来说是一个零元。
+
+```haskell
+[t | Φ, q] = [t | Φ] = [t | q, Φ]
+```
+
+Unlike with `[t | A]`, the value of `[t | Φ]` is independent of `t` !
+
+>和`[t | A]`不一样，`[t | Φ]`的值与`t`无关。
+
+Recall that for `A` we introduced a function `unit :: x -> M x` satisfying the laws:
+
+>回忆一下,对于`A`，我们介绍的函数`unit :: x -> M x`需要满足规则：
+
+```haskell
+(iii)    map f * unit = unit * f
+(I)       join * unit = id
+(II)  join * map unit = id
+```
+
+and then defined `[t | A] = unit t` .
+
+>并且我们定义`[t | A] = unit t`。
+
+Similarly, for `Φ` we introduce a function
+
+>类似的，对于`Φ`我们介绍一个函数：
+
+```haskell
+zero :: y -> M x
+```
+
+满足下面的规则：
+
+```haskell
+(v)    map f * zero = zero * g
+(IV)    join * zero = zero
+(V) join * map zero = zero
+```
+
+and define
+
+>并定义：
+
+```haskell
+(7) [t | `Φ`] = zero t
+```
+
+Law (v) specifies that the result of `zero` is independent of its argument, and can be derived from the type of `zero` (again, see [Rey83, Wad89]). In the case of lists, setting `zero y = []` makes laws (IV) and (V) hold, since `join [] = []` and `join [[],...,[]] = []`. (This ignores what happens when `zero` is applied to `丄`, which will be considered below.)
+
+>规则(v)说明`zero`的结果与他的参数无关，并且能从`zero`类型导出（参考[Rey83, Wad89]）。在列表的例子中，既然`join [] = []`并且`join [[],...,[]] = []`，设定`zero y = []`使规则(IV)和(V)成立。(这些结论忽略了当`zero`应用到`丄`的情况，这种情况将在下面考虑)
+
+Now, for a monad with `zero` we can extend comprehensions to contain a new form of qualifier, the filter, defined by
+
+>现在，我们能为带`zero`的单子扩展推导式，使之拥有一个新的限定词，过滤器，定义为：
+
+```haskell
+（8） [t | b] = if b then [t] else []
+```
+
+where `b` is any boolean-valued term. Recall that laws (4) and (6) were proved by induction on the form of qualifiers； we can show that for the new forms of qualifiers, defined by (7) and (8), they still hold. We also have new laws
+
+>这儿的`b`可以是任何代表布尔值的语句。回忆规则(4)和(6)以限定词形式的归纳法证明；我们能说靠规则(7)和(8)定义的新限定词仍然满足（(4)和(6)）。我们同样有新规则：
+
+```haskell
+(9)  [t | b, c] = [t | (b ^ c)]
+(10) [t | q, b] = [t | b, q]
+```
+
+where `b` and `c` are boolean-valued terms, and where `q` is any qualifier not binding variables free in `b` .
+
+>这儿的`b`和`c`是代表布尔值的语句，这儿的`q`可以是任何没有在`b`中绑定自由变量的限定词。
+
+When dealing with `丄` as a potential value, more care is required. In a strict language, where all functions (including `zero`) are strict, there is no problem. But in a lazy language, in the case of lists, laws (v) and (IV) hold, but law (V) is an inequality, `join * map zero <= zero` , since `join (map zero ) 丄 = 丄` but `zero 丄 = []`. In this case, laws (1)-(9) are still valid, but law (10) holds only if `[t | q] /= 丄`. In the case that `[t | q] = 丄`, law (10) becomes an inequality, `[t | q, b] <= [t | b, q]`.
+
+>当`丄`作为一个可用的值的时候，需要更加小心。在严格的编程语言中，所有的函数（包括`zero`）是严格的，这没有问题。但是在惰性语言中，比如在列表的例子中，规则(v)和(IV)需要保证，而规则(V)有点不同，既然`join (map zero ) 丄 = 丄`而又有`zero 丄 = []`，那么`join * map zero <= zero`。在这个例子中，规则(1)-(9)是仍然是有效的，而规则(10)只在`[t | q] /= 丄`时有效。在`[t | q] = 丄`的情况下，规则(10)也有点不同，`[t | q, b] <= [t | b, q]`。
+
+As a second example of a monad with a `zero`, consider the strictness monad `Str` defined in Section 3.2. For this monad, a `zero` may be defined by `zero_Str y = 丄`. It is easy to verify that the required laws hold; unlike with lists, the laws hold even when `zero` is applied to `丄`. For example, `[x - 1 | x >= 1 ]_Str` returns one less than `x` if `x` is positive, and `丄` otherwise.
+
+>作为第二个带`zero`的单子的例子，考虑3.2节定义的严格单子`Str`。对于这个单子，`zero`可能以`zero_Str y = 丄`的方式进行定义。很容易验证，所要求的规则都是满足的；与列表不一样，甚至将`zero`应用到`丄`上都是满足的。例如，`[x - 1 | x >= 1]_Str`，如果x是正数，将返回比`x`小一的数，反之是`丄`。
+
+##6 Monad morphisms
+
+>单子态射
+
+If `M` and `N` are two monads, then `h :: M x -> N x` is a monad morphism from `M` to `N` if it preserves the monad operations:
+
+>如果`M`和`N`是两个单子，如果`h :: M x -> N x`保持了下面这些单子的操作，那么它是一个从`M`到`N`的单子态射。
+
+```haskell
+h * map_M f = map_N f * h
+ h * unit_M = unit_N
+ h * join_M = join_N * h^2
+```
+
+where `h^2 = h * map_M h = map_N h * h` (the two composites are equal by the first equation).
+
+>这儿`h^2 = h * map_M h = map_N h * h`（根据第一个等式，这两个符合是相等的）。
+
+Define the effect of a monad morphism on qualifiers as follows:
+
+>下面定义单子态射在限定词上的影响：
+
+```haskell
+     h(A) = A
+h(x <- u) = x <- (h u)
+  h(p, q) = (h p),(h q)
+```
+
+It follows that if `h` is a monad morphism from `M` to `N` then
+
+>如果`h`是一个`M`到`N`的单子态射，那么它遵循：
+
+```haskell
+(11) h [t | q]_M = [t | (h q)]_N
+```
+
+for all terms `t` and qualifiers `q` . The proof is a simple induction on the form of qualifiers.
+
+>对于所有的语句`t`和限定词`q`。证据就是限定词形式的简单归纳。
+
+As an example, it is easy to check that `unit M :: x -> M x` is a monad morphism from `Id` to `M` . It follows that
+
+>作为例子，很容易检查`unit M :: x -> M x`是一个从`Id`到`M`的单子态射。它遵循：
+
+```haskell
+[[t | x <- u]_Id]_M = [t | x <- [u]_M ]_M
+```
+
+This explains a trick occasionally used by functional programmers, where one writes the qualifier `x <- [u]` inside a list comprehension to bind `x` to the value of `u` , that is, to achieve the same effect as the qualifier `x <- u` in an Id comprehension.
+
+>这解释了函数式程序员有时候采用的一个技巧，在这儿，在列表推导式中写一个`x <- [u]`的限定词，将`x`绑定到值`u`上，这样可以实现与同一推导式的限定词`x <- u`相同的作用。
+
+As a second example, the function `ro` from Section 4.5 is a monad morphism from `SR` to `ST` . This can be used to prove the equivalence of the two interpreters in Figures 5 and 6. Write `exp_ST :: Exp -> ST Val` and `exp_SR :: Exp -> SR Val` for the versions in the two figures. The equivalence of the two versions is clear if we can show that
+
+>作为第二个例子，在4.5节中，函数`ro`是一个从`SR`到`ST`的单子态射。这可以用来证明图5和6两个解释器等价。在这两个图中写出的`exp_ST :: Exp -> ST Val` 和 `exp_SR :: Exp -> SR Val`两个版本。这两个版本的等价是明显的，如果我们能展示：
+
+```haskell
+ro * exp_SR = exp_ST
+```
+
+The proof is a simple induction on the structure of expressions. If the expression has the form `(Plus e1 e2 )`, we have that
+
+>简单的对表达式的结果进行归纳可以证明。如果表达式有型如`(Plus e1 e2 )`的形式，我们有：
+
+```haskell
+  ro (exp_SR (Plus e1 e2))
+= {unfolding exp_SR}
+  ro [v1 + v2 | v1 <- exp_SR e1, v2 <- exp_SR e2]_SR
+= {by(11)}
+  [v1+v2 | v1 <- ro (exp_SR e1), v2 <- ro (exp_SR e2)]_ST
+={hypothesis}
+  [v1 + v2 | v1 <- exp_ST e1, v2 <- exp_ST e2]_ST
+= {folding exp_ST}
+  exp_ST (Plus e1 e2)
+```
+
+The other two cases are equally simple.
+
+>另外两个案例同样简单。
+
+All of this extends straightforwardly to monads with `zero`. In this case we also require that `h * zero M = zero N` , define the action of a morphism on a filter by `h b = b` , and observe that (11) holds even when `q` contains filters.
+
+>上面所说的可以直接扩展到带`zero`的单子上。在这个案例里面，我们也要求`h * zero M = zero N`，用`h b = b`定义过滤器在态射上的操作，很明显，当`q`包含过滤器的时候规则(11)是满足的。
+
+##7 More monads
+
+>更多的单子
+
+This section describes four more monads: parsers, expressions, input-output, and continuations. The basic techniques are not new (parsers are discussed in [Wad85, Fai87, FL89],and exceptions are discussed in [Wad85, Spi90]), but monads and monad comprehensions provide a convenient framework for their expression.
+
+>本节描述四个单子：解析器，异常，输入-输出，以及后续调用。这些基本的技术并不是新的（解析在[Wad85, Fai87, FL89]中讨论过，异常在[Wad85, Spi90]讨论过），但是单子和单子推导式为他们的表达提供了一个便利的框架。
+
+### 7.1 Parsers
+
+>解析器
+
+The monad of parsers is given by
+
+>解析器单子以下面的形式给出：
+
+```haskell
+type Parse x   = String -> List (x, String)
+map_Parse f x' = \i -> [(f x, i') | (x, i') <- x' i]_List
+unit_Parse x   = \i -> [(x, i)]_List
+join_Parse x'' = \i -> [(x, i'') | (x', i') <- x'' i, (x, i'') <- x' i']_List
+```
+
+Here `String` is the type of lists of `Char` . Thus, a parser accepts an input string and returns a list of pairs. The list contains one pair for each successful parse, consisting of the value parsed and the remaining unparsed input. An empty list denotes a failure to parse the input. We have that
+
+>这儿`String`的类型是`Char`的列表。因此，一个解析器接受一个输入字符串，并返回一个二元组的列表。这个列表为每一个成功的解析包含一个二元组，二元组由解析的值与剩下未解析的输入部分组成。空的列表表示解析输入失败。我们有
+
+```haskell
+[(x,y) | x <- x', y <- y']_Parse = \i -> [((x,y),i'') | (x,i') <- x' i, (y,i'') <- y' i']_List
+```
+
+This applies the first parser to the input, binds `x` to the value parsed, then applies the second parser to the remaining input, binds `y` to the value parsed, then returns the pair `(x,y)` as the value together with input yet to be parsed. If either `x'` or `y'` fails to parse its input (returning an empty list) then the combined parser will fail as well.
+
+>这个表达式应用第一个解析器到输入，并将`x`绑定到解析出的值上，然后应用第二个解析器到剩下的输入上，并绑定`y`到解析出的值上，然后返回二元组`(x,y)`作为所有已经解析出的值。如果`x‘`或者`y’`解析他们的输入失败（返回一个空列表），那么组合起来的解析器将也会失败。
+
+There is also a suitable `zero` for this monad, given by
+
+>这个单子也有一个合适的`zero`。如下：
+
+```haskell
+zero_Parse y = \i -> []_List
+```
+
+Thus, `[]_Parse` is the parser that always fails to parse the input. It follows that we may use filters in Parse-comprehensions as well as in List-comprehensions.
+
+>如此，`[]_Parse`是一个总是解析输入失败的解析器。它遵循我们可能在解析推导式和列表推导式中采用的过滤器的原则。
+
+The alternation operator combines two parsers:
+
+>交替操作符组合两个解析器：
+
+```haskell
+(#)     :: Parse x -> Parse x -> Parse x
+x' # y' =  \i -> (x' i) ++ (y' i)
+```
+
+(Here `++` is the operator that concatenates two lists.) It returns all parses found by the first argument followed by all parses found by the second.
+
+>（这儿`++`是一个连接两个列表的操作）这个操作返回第一个参数的所有解析并将第二个参数的所有解析跟随在它后面。
+
+The simplest parser is one that parses a single character:
+
+>最简单的解析器是解析一个单独的字符：
+
+```haskell
+next :: Parse Char
+next =  \i -> [(head i, tail i) |not (null i)]_List
+```
+
+Here we have a List-comprehension with a filter. The parser `next` succeeds only if the input is non-empty, in which case it returns the next character. Using this, we may define a parser to recognise a literal:
+
+>这儿我们有一个带过滤器的列表推导式。解析器`next`只在输入非空的时候成功，在这种情况下返回下一个字符。采用这个解析器，我们可以定义一个逐字识别的解析器。
+
+```haskell
+lit   :: Char -> Parse()
+lit c =  [() | c' <- next, c = c']_Parse
+```
+
+Now we have a Parse-comprehension with a filter. The parser `lit c` succeeds only if the next character in the input is `c` .
+
+>现在我们有一个带过滤器的解析器推导式。如果下一个字符是`c`，解析器`lit c`返回成功。
+
+As an example, a parser for fully parenthesised lambda terms, yielding values of the type `Term` described previously, can be written as follows:
+
+>作为例子，一个全部加上括号的lambda语句的解析器，产生之前描述过的`Term`类型的值，可以写成：
+
+```haskell
+term :: Parse Term
+term = [Var x | x <- name]_Parse
+  # [ Lam x t | () <- lit '(', () <- lit '\', x <- name, () <- lit '->', t <- term, () <- lit ')']_Parse
+  # [ App t u | () <- lit '(', t <- term, u <- term, () <- lit ')']_Parse
+
+name :: Parse Name
+name =  [c | c <- next, 'a'<=c, c <='z']_Parse
+```
+
+Here, for simplicity, it has been assumed that names consist of a single lower-case letter, so `Name = Char`; and that `\` and `->` are both characters.
+
+>这儿，为了简单起见，要确保名字由单个小写字符构成，因此`Name = Char`；并且`\`和`->`都是一个字符串。
+
+###7.2 Exceptions
+
+>异常
+
+The type `Maybe x` consists of either a value of type `x` , written `Just x` , or an exceptional value, written `Nothing` :
+
+>类型`Maybe x`由类型`x`的值，写成`Just x`，或者是一个异常值，写成`Nothing`构成：
+
+```haskell
+data Maybe x = Just x | Nothing
+```
+
+(The names are due to Spivey [Spi90].) The following operations yield a monad:
+
+>（这个名字是来自Spivey的[Spi90]）。下面的操作生成一个单子：
+
+```haskell
+map_Maybe f (Just x)       = Just (f x)
+map_Maybe f Nothing        = Nothing
+
+unit_Maybe x               = Just x
+
+join_Maybe (Just (Just x)) = Just x
+join_Maybe (Just Nothing)  = Nothing
+join_Maybe Nothing         = Nothing
+```
+
+We have that
+
+>我们有
+
+```haskell
+[(x,y) | x <- x', y <- y']
+```
+
+returns `Just (x,y)` if `x'` is `Just x` and `y'` is `Just y` , and otherwise returns `Nothing` .
+
+>如果`x'`是`Just x`并且`y'`是`Just y`，那么返回`Just (x,y)`，否则返回`Nothing`。
+
+
+
+
 
 
 
