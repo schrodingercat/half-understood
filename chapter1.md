@@ -1293,24 +1293,276 @@ returns `Just (x,y)` if `x'` is `Just x` and `y'` is `Just y` , and otherwise re
 
 >如果`x'`是`Just x`并且`y'`是`Just y`，那么返回`Just (x,y)`，否则返回`Nothing`。
 
+There is also a suitable zero for this monad, given by
+
+>这同样适合这个单子的`zero`，如下：
+
+```haskell
+zero_Maybe y = Nothing
+```
+
+Hence `[]_Maybe = Nothing` and `[x]_Maybe = Just x` . For example, `[x - 1 | x >= 1]_Maybe` returns one less than `x` if `x` is positive, and `Nothing` otherwise.
+
+>因此`[]_Maybe = Nothing` 和 `[x]_Maybe = Just x`成立。例如，`[x - 1 | x >= 1]_Maybe`，如果`x`是正数，返回比`x`小一的数，否则返回`Nothing`。
+
+Two useful operations test whether an argument corresponds to a value and, if so, return that value:
+
+>两个有用的操作测试是否一个参数跟一个值关联，如果是，就返回这个值。
+
+```haskell
+exists          :: Maybe x -> Bool
+exists (Just x) = True
+exists Nothing  = False
+
+the             :: Maybe x -> x
+the (Just x)    = x
+```
+
+Observe that
+
+>很显然
+
+```haskell
+[the x' | exists x']_Maybe = x'
+```
+
+for all `x' :: Maybe x` . If we assume that `(the Nothing) = _|_`, it is easily checked that `the` is a monad morphism from `Maybe` to `Str` . We have that
+
+>对于所有的`x' :: Maybe x`。如果我们确认`(the Nothing) = _|_`，很容易验证`the`是一个从`Maybe`到`Str`的单子态射。我们有
+
+```haskell
+the [x-1 | x >= 1]_Maybe = [x-1 | x>=1]_Str
+```
+
+as an immediate consequence of the monad morphism law. This mapping embodies the common simplification of considering error values and `_|_` to be identical
+
+>作为单子态射法则的直接结果。这个映射将体现出对错误值和`_|_`等同考虑的一般简化。
+
+The biased-choice operator chooses the first of two possible values that is well defined:
+
+>一种偏向选择操作在两个值中选择第一个有明确定义的。
+
+```haskell
+(?) :: Maybe x -> Maybe x -> Maybe x
+x' ? y' = if exists x' then x' else y'
+```
+
+The `?` operation is associative and has `Nothing` as a unit. It appeared in early versions of ML [GMW79], and similar operators appear in other languages. As an example of its use, the term
+
+>`?`操作是可结合的，并且可以用`Nothing`作为一个操作数。它最早的版本见于ML[GMW79]，并且在其他的语言中有相似的操作。作为使用的例子，语句
+
+```haskell
+the([x-1 | x>= 1]_Maybe ? [0]_Maybe)
+```
+
+returns the predecessor of `x` if it is non-negative, and zero otherwise.
+
+>如果`x`减一是非负的，返回这个值，否则返回0.
+
+In [Wad85] it was proposed to use lists to represent exceptions, encoding a value `x` by the unit list, and an exception by the empty list. This corresponds to the mapping
+
+>在[Wad85]中建议采用列表表达异常，采用单个元素列表编码`x`的值，并且用空列表代表异常。这相当与映射：
+
+```haskell
+list :: Maybe x -> List x
+list (Just x) = [x]_List
+list Nothing = []_List
+```
+
+which is a monad morphism from `Maybe` to `List` . We have that
+
+>这是一个从`Maybe`到`List`的单子态射。我们有：
+
+```haskell
+list(x' ? y') <= (list x')++(list y')
+```
+
+where `<=` is the sublist relation. Thus, exception comprehensions can be represented by list comprehensions, and biased choice can be represented by list concatenation. The argument in [Wad85] that list comprehensions provide a convenient notation for manipulating exceptions can be mapped, via this morphism, into an argument in favour of exception comprehensions!
+
+>在这儿`<=`是子列表关系。因此，异常推导式可以用列表推导式表示，并且偏向选择可以用列表连接操作表示。在[Wad85]中列表推导式提供的处理异常的方便记号的论证，通过这个态射，可以被映射成异常用于推导式的论证。
 
 
+### 7.3 Input and Output
 
+>输入输出
 
+Fix the input and output of a program to be strings (e.g., the input is a sequence of characters from a keyboard, and the output is a sequence of characters to appear on a screen). The input and output monads are given by:
 
+>确定程序的输入输出是字符串（例如,输入是来自键盘的一个字符序列，输出是一个显示到屏幕的字符序列）。输入输出单子被定义为：
 
+```haskell
+type In x  = String -> (x,String)
+type Out x = (x, String -> String)
+```
 
+The input monad is a function from a string (the input to the program) and to a pair of a value and a string (the input to the rest of the program). The output monad is a pair of a value and a function from a string (the output of the rest of the program) to a string (the output of the program).
 
+>输入单子是一个以字符串（当前输入到程序中的）为输入并以一个值和字符串（输入到之后程序的）组成的二元组为输出的函数。输出单子是一个二元组，一个分量是一个值，另一个分量是一个字符串（之前程序输出的）到字符串（当前程序输出的）的函数。
 
+The input monad is identical to the monad of state transformers, fixing the state to be a string; and the operations `map` , `unit` , and `join` are identical to those in the state-transformer monad. Two useful operations in the input monad are
 
+>如果将状态确定为字符串，输入单子等同于状态转换器单子；并且操作`map` , `unit` , 以及 `join`等同于状态转换器中的这些操作。输入单子两个有用的操作是：
 
+```haskell
+eof :: In Bool
+eof =  \i -> (null i, i)
 
+read :: In Char
+read =  \i -> (head i,tail i)
+```
 
+The first returns true if there is more input to be read, the second reads the next input character.
 
+>如果有更多的输入可以被读出，第一个操作返回真，第二个操作读出下一个输入的字符。
 
+The output monad is given by
 
+>输出单子如下：
 
+```haskell
+map_Out f x' = [(f x, ot) | (x, ot) <- x']_Id
+unit_Out x   = (x,\o -> o)
+join_Out x'' = [(x, ot * ot') | (x', ot) <- x'', (x, ot') <- x']_Id
+```
 
+The second component of the pair is an output transformer, which given the output of the rest of the program produces the output of this part. The `unit` produces no output of its own, so its output transformer is the identity function. The `join` operation composes two output transformers. A useful operation in the output monad is
+
+>二元组的第二个分量是一个输出转换器，它给出程序接下来需要输出的部分。`unit`自己不产生输出，因此他的输出转换其是恒等函数。`join`操作组合两个输出转换器。一个有用的输出单子的操作是：
+
+```haskell
+write   :: Char -> Out()
+write c =  ((),\o -> c : o)
+```
+
+This adds the character to be written onto the head of the output list.
+
+>这个操作将字符写到输出列表的头部
+
+Alternative definitions of the output monad are possible, but these do not behave as well as the formulation given above. One alternative treats output as a state transformer,
+
+>对输出单子的定义是可被代替的，但是这些不会比上面给出的运行的更好。一种可选的方式是将输出看作状态转换器，
+
+```haskell
+type Out' x = String -> (x, String)
+```
+
+taking `map` , `unit` , and `join` as in the state transformer monad. The `write` operation is now
+
+>`map` , `unit` , 以及 `join`都和状态转换器单子一样。`write`操作可以写成
+
+```haskell
+write   :: Char -> Out'()
+write c =  \o -> ((), c:o)
+```
+
+This formulation is not so good, because it is too strict: output will not appear until the program terminates. Another alternative is
+
+>这种表述没有那么理想，因为它太严格：输出在程序结束之前将不会展示出来。另外一种可选的表述是：
+
+```haskell
+type Out'' x = (x, String)
+map_Out'' f x' = [(f x, o) | (x, o) <- x']_Id
+unit_Out'' x = (x,[])
+join_Out'' x'' = [(x, o++o') | (x', o) <- x'', (x,o') <- x']_Id
+write c = ((),[c])
+```
+
+This formulation is also not so good, because the time to perform the concatenation (++) operations is quadratic in the size of the output in the worst case.
+
+>这种表述一样也没有那么好，因为最坏的情况下，链接符（++）操作的时间复杂度是输出大小的二次方。
+
+Finally, the output and input monads can be combined into a single monad:
+
+>最后，输入输出单子可以组合成一个单子：
+
+```haskell
+type InOut x = String -> (x, String, String -> String)
+```
+
+Suitable definitions of `map` , `unit` , and `join` are left to the reader. Useful operations on this monad are:
+
+合适的`map` , `unit` , 以及 `join`的定义留给读者。这个单子有用的操作是：
+
+```haskell
+in    :: In x -> InOut x
+in x' =  \i -> [(x,i',\o -> o) | (x,i') <- x' i]_Id
+
+out    :: Out x -> InOut x
+out x' =  \i -> [(x,i,ot) | (x,ot) <- x']_Id
+
+fun    :: InOut -> (String -> String)
+fun x' =  \i -> [ot [] | ((),i',ot) <- x' i]_Id
+```
+
+The first two are monad morphisms from `In` and `Out` to `InOut` they take input-only and output-only operations into the input-output monad. The last takes a value into the input-output monad into a function from the input to the output.
+
+>前两个是从`In`和`Out`到`InOut`的单子态射，它们接受只有输入或者只有输出的操作到输入输出单子中。最后一个接受一个并送给输入输出单子，然后再放入一个从输入到输出的函数中。
+
+###7.4 Continuations
+
+>延续调用
+
+Fix a type `R` of results. The monad of continuations is given by
+
+>确定类型`R`为结果。延续单子如下
+
+```haskell
+type Cont x = (x -> R) -> R
+map_Cont f x' = \k -> x' (\x -> k (f x))
+unit_Cont x = \k -> k x
+join_Cont x'' = \k -> x'' (\x' -> x' (\x -> k x))
+```
+
+A continuation of type `x` takes a continuation function `k :: x -> R`, which specifies how to take a value of type `x` into a result of type `R`, and returns a result of type `R`. The `unit` takes a value `x` into the continuation `\k -> k x` that applies the continuation function to the given value. We have that
+
+>一个类型`x`的后续是，传入一个后续函数`k :: x -> R`，然后返回一个类型为`R`的结果，这个后续函数指定怎样通过类型`x`的值获取以`R`为类型的结果。`unit`接受一个类型为`x`的值到后续`\k -> k x`中，这个后续应用一个后续函数在这个`x`的值上。我们有
+
+```haskell
+[(x,y) | x <- x', y <- y']_Cont = \k -> x' (\x -> y' (\y -> k (x,y)))
+```
+
+This can be read as follows: evaluate `x'` , bind `x` to the result, then evaluate `y` , bind `y` to
+the result, then return the pair `(x,y)`.
+
+>这个推导式可以读成： 计算`x'`，并绑定`x`到结果，然后计算`y'`，并绑定`y`到结果，然后返回二元组`(x,y)`。
+
+A useful operation in this monad is
+
+>该单子一个有用的操作是：
+
+```haskell
+callcc   :: ((x -> Cont y) -> Cont x) -> Cont x
+callcc g =  \k -> g (\x -> \k' -> k x) k
+```
+
+```haskell
+--译者猜想
+zero x = \k -> x
+{t | y <- zero x,...} = {x}
+callcc g = \k -> g(\x -> zero k x) k
+```
+
+This mimics the "call with current continuation" (or `call/cc`) operation popular from Scheme [RC86]. For example, the Scheme program
+
+>这个模仿在Scheme[RC86]中流行的“以当前后续调用“（或者称为`call/cc`）操作。例如Scheme程序
+
+```scheme
+(call/cc (lambda (esc)(/ x (if (= y 0)(esc 42) y))))
+```
+
+translates to the equivalent program
+
+>翻译成等价的程序是
+
+```haskell
+callcc(\esc -> [x/z | z <- if y=0 then esc 42 else [y]_Cont]_Cont)
+```
+
+Both of these programs bind `esc` to an escape function that returns its argument as the value of the entire `callcc` expression. They then return the value of `x` divided by `y` , or return `42` if `y` is zero.
+
+>这两个程序将`esc`绑定到一个退出程序上，这个退出程序返回它的参数作为整个`callcc`表达式的值。如果`y`为0，他们返回`42`，否则返回`x`除以`y`的值。
+
+##8 Translation
 
 
 
