@@ -1596,7 +1596,7 @@ A ::= x1 :: T1 , ... , xn :: Tn
 
 We write the typing `A |- t :: T` to indicate that under assumption `A` the term `t` has type `T` . The inference rules for well-typings in this calculus are well known, and can be seen on the left hand sides of Figures 8 and 10.
 
->我们写定型记号`A |- t :: T`表示在假设`A`下，语句`t`具备`T`类型。演算中的良好定型的推导规则是有名的，这些展示在图8和图10的左边。
+>我们写定型记号`A |- t :: T`表示在假设`A`下，语句`t`具备`T`类型。一些著名的演算中的良好定型的推导规则，展示在图8和图10的左边。
 
 
 
