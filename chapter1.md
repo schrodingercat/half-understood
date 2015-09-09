@@ -1564,6 +1564,62 @@ Both of these programs bind `esc` to an escape function that returns its argumen
 
 ##8 Translation
 
+>转换
+
+In Section 4, we saw that a function of type `U -> V` in an impure functional language that manipulates state corresponds to a function of type `U -> ST V` in a pure functional language. The correspondence was drawn in an informal way, so we might ask, what assurance is there that every program can be translated in a similar way? This section provides that assurance, in the form of a translation of lambda-calculus into an arbitrary monad. This allows us to translate not only programs that manipulate state, but also programs that raise exceptions, call continuations, and so on. Indeed, we shall see that there are two translations, one call-by-value and one call-by-name. The target language of both translations is a pure, non-strict lambda-calculus, augmented with M-comprehensions.
+
+>在第4节中，我们见到了一个在非纯函数式语言中类型为`U -> V`的函数，这个函数处理了状态，与在纯函数式语言中类型为`U -> ST V`的函数一样。这种对应是用一种非形式化的方法，因此我们可能问，如何能保证每个程序能采用相似的方式转换？本节提供这个保证，以转换lambda演算到任意单子中的形式。这允许我们转换不只是状态处理的程序，还包括抛出异常延续调用等程序。的确，我们将看到有两个转换，一个是“通过值调用（call-by-value）”，一个是“通过名字调用（call-by-name）”。转换目标语言在两种情况下都是纯的非严格的lambda演算，采用M推导式进行扩展。
+
+We will perform our translations on a simple typed lambda calculus. We will use `T` , `U` , `V` to range over types, and `K` to range over base types. A type is either a base type, function type, or product type:
+
+>我们将在一个简单类型的lambda演算上进行我们的转换。我们将用`T`，`U`，`V`代表类型，`K`代表基本类型。一个类型可以是基本类型，函数类型，或者是组合类型。
+
+```haskell
+T,U,V ::= K | (U - >V) | (U, V)
+```
+
+We will use `t` , `u` , `v` to range over terms, and `x` to range over variables. A term is either a variable, an abstraction, an application, a pair, or a selection:
+
+>我们将采用`t`，`u`，`v`代表语句，以及采用`x`代表变量。一个语句包括变量，抽象，应用，二元组，或者是选择：
+
+```haskell
+t,u,v ::= x | (\x -> v) | (t u) | (u, v) | (fst t) | (snd t)
+```
+
+In the following, we usually give the case for `(fst t)` but omit that for `(snd t)`, since the two are nearly identical. We will use `A` to range over assumptions, which are lists associating variables with types:
+
+>接下来，我们通常会给出`(fst t)`的案例，而忽略`(snd t)`的案例，因为这两者几乎一样。我们将采用`A`代表假设，是一个类型和变量关联的列表
+
+```haskell
+A ::= x1 :: T1 , ... , xn :: Tn
+```
+
+We write the typing `A |- t :: T` to indicate that under assumption `A` the term `t` has type `T` . The inference rules for well-typings in this calculus are well known, and can be seen on the left hand sides of Figures 8 and 10.
+
+>我们写定型记号`A |- t :: T`表示在假设`A`下，语句`t`具备`T`类型。演算中的良好定型的推导规则是有名的，这些展示在图8和图10的左边。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
