@@ -460,6 +460,32 @@ is as follows: reduce `u` to WHNF, bind `x` to the value of `u` , reduce `v` to 
 
 >操作起来像这样：计算`u`到WHNF，绑定`x`到`u`的值,计算`v`到WHNF，绑定`y`到`v`的值，然后计算`t`。或者是，安全的并行计算`t`，`u`，`v`，并且直到`u`和`v`为WHNF的时候返回整个结果。
 
+```haskell
+-- 译者注
+-- 在Haskell中，在开启-XBangPatterns的前提下，strict f x可以表示为：
+f !x
+
+-- 采用下面的函数可以验证
+test a   = a*1
+f a      = [0,a]
+f_Str !a = [0,a]
+
+-- ghci> f (test undefined)
+-- [0,*** Exception: Prelude.undefined
+
+-- ghci> f_Str (test undefined)
+-- *** Exception: Prelude.undefined
+
+--可以定义序列
+my_seq_fake a b = b
+my_seq_Str !a b = b
+
+-- ghci> my_seq (test undefined) 1
+-- 1
+-- ghci> my_seq_Str (test undefined) 1
+-- *** Exception: Prelude.undefined
+```
+
 ##4 Manipulating state
 
 >4 状态处理
